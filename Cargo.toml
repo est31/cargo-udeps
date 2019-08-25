@@ -1,0 +1,10 @@
+[package]
+name = "cargo-udeps"
+version = "0.1.0"
+authors = ["est31 <MTest31@outlook.com>"]
+edition = "2015"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cargo = "0.38"
