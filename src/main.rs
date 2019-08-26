@@ -165,7 +165,11 @@ fn main() -> Result<(), StrErr> {
 				unused_externs.push(name);
 			}
 		}
-		println!("unused crates: {:?}", unused_externs);
+		if !unused_externs.is_empty() {
+			println!("unused crates: {:?}", unused_externs);
+		} else {
+			println!("All deps seem to have been used.");
+		}
 	}
 	Ok(())
 }
