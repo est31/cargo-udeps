@@ -1,7 +1,6 @@
 extern crate cargo;
 
 use std::fmt::Display;
-use std::ffi::OsString;
 use std::sync::Arc;
 use std::time::Instant;
 use std::collections::HashMap;
@@ -107,12 +106,22 @@ impl Executor for Exec {
 	}
 }
 
-fn externs(cmd :&ProcessBuilder) -> Vec<&OsString> {
+fn externs(cmd :&ProcessBuilder) -> Vec<(&str, &str)> {
 	let mut externs = Vec::new();
 	let mut args_iter = cmd.get_args().iter();
 	while let Some(v) = args_iter.next() {
 		if v == "--extern" {
-			if let Some(e) = args_iter.next() {
+			let arg = args_iter.next()
+				.map(|a| a.to_str().expect("non-utf8 paths not supported atm"))
+				.map(|a| {
+					let mut splitter = a.split("=");
+					if let (Some(n), Some(p)) = (splitter.next(), splitter.next()) {
+						(n, p)
+					} else {
+						panic!("invalid format for extern arg: {}", a);
+					}
+				});
+			if let Some(e) = arg {
 				externs.push(e);
 			}
 		}
