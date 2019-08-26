@@ -9,3 +9,6 @@ edition = "2015"
 
 [dependencies]
 cargo = "0.38"
+
+[profile.dev]
+debug = false
