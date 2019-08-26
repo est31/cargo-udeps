@@ -75,12 +75,14 @@ impl<T :Display> From<T> for StrErr {
 
 struct ExecData {
 	times :HashMap<PackageId, Instant>,
+	final_crate :Option<PackageId>,
 }
 
 impl ExecData {
 	fn new() -> Self {
 		Self {
 			times : HashMap::new(),
+			final_crate : None,
 		}
 	}
 }
@@ -97,6 +99,7 @@ impl Executor for Exec {
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 			bt.times.insert(id, Instant::now());
+			bt.final_crate = Some(id);
 		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
@@ -123,5 +126,9 @@ fn main() -> Result<(), StrErr> {
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
 	println!("Done {:?}", data.times);
+	if let Some(f) = data.final_crate {
+		let final_time = data.times.get(&f).unwrap();
+		println!("final time {:?}", final_time);
+	}
 	Ok(())
 }
