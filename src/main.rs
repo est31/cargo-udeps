@@ -1,7 +1,13 @@
 extern crate cargo;
 
 use std::fmt::Display;
+use std::sync::Arc;
 use cargo::core::shell::Shell;
+use cargo::core::compiler::{Executor, DefaultExecutor};
+use cargo::util::process_builder::ProcessBuilder;
+use cargo::core::package_id::PackageId;
+use cargo::core::manifest::Target;
+use cargo::util::errors::CargoResult;
 use cargo::util::command_prelude::{App, subcommand, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 
@@ -64,6 +70,17 @@ impl<T :Display> From<T> for StrErr {
 	}
 }
 
+struct Exec;
+
+impl Executor for Exec {
+	fn exec(&self, cmd :ProcessBuilder, id :PackageId, target :&Target,
+			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
+			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
+		Ok(())
+	}
+}
+
 fn main() -> Result<(), StrErr> {
 	cargo::core::maybe_allow_nightly_features();
 	let config = match Config::default() {
@@ -78,7 +95,10 @@ fn main() -> Result<(), StrErr> {
 	let ws = args.workspace(&config)?;
 	let mode = CompileMode::Check { test : false };
 	let compile_opts = args.compile_options(&config, mode, Some(&ws))?;
-	cargo::ops::compile(&ws, &compile_opts)?;
+
+
+	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec);
+	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	//println!("Hello, world!");
 	Ok(())
 }
