@@ -1,6 +1,7 @@
 extern crate cargo;
 
 use std::fmt::Display;
+use std::ffi::OsString;
 use std::sync::Arc;
 use std::time::Instant;
 use std::collections::HashMap;
@@ -75,7 +76,7 @@ impl<T :Display> From<T> for StrErr {
 
 struct ExecData {
 	times :HashMap<PackageId, Instant>,
-	final_crate :Option<PackageId>,
+	final_crate :Option<(PackageId, ProcessBuilder)>,
 }
 
 impl ExecData {
@@ -99,11 +100,24 @@ impl Executor for Exec {
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 			bt.times.insert(id, Instant::now());
-			bt.final_crate = Some(id);
+			bt.final_crate = Some((id, cmd.clone()));
 		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
 	}
+}
+
+fn externs(cmd :&ProcessBuilder) -> Vec<&OsString> {
+	let mut externs = Vec::new();
+	let mut args_iter = cmd.get_args().iter();
+	while let Some(v) = args_iter.next() {
+		if v == "--extern" {
+			if let Some(e) = args_iter.next() {
+				externs.push(e);
+			}
+		}
+	}
+	externs
 }
 
 fn main() -> Result<(), StrErr> {
@@ -126,9 +140,11 @@ fn main() -> Result<(), StrErr> {
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
 	println!("Done {:?}", data.times);
-	if let Some(f) = data.final_crate {
-		let final_time = data.times.get(&f).unwrap();
+	if let Some((f, cmd)) = &data.final_crate {
+		let final_time = data.times.get(f).unwrap();
 		println!("final time {:?}", final_time);
+		let externs = externs(cmd);
+		println!("final args {:?}", externs);
 	}
 	Ok(())
 }
