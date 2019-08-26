@@ -2,7 +2,7 @@ extern crate cargo;
 
 use std::fmt::Display;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::SystemTime;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use cargo::core::shell::Shell;
@@ -74,7 +74,7 @@ impl<T :Display> From<T> for StrErr {
 }
 
 struct ExecData {
-	times :HashMap<PackageId, Instant>,
+	times :HashMap<PackageId, SystemTime>,
 	final_crate :Option<(PackageId, ProcessBuilder)>,
 }
 
@@ -98,7 +98,7 @@ impl Executor for Exec {
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
-			bt.times.insert(id, Instant::now());
+			bt.times.insert(id, SystemTime::now());
 			bt.final_crate = Some((id, cmd.clone()));
 		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
@@ -129,6 +129,11 @@ fn externs(cmd :&ProcessBuilder) -> Vec<(&str, &str)> {
 	externs
 }
 
+fn modified_date(path :&str) -> Result<SystemTime, StrErr> {
+	let metadata = std::fs::metadata(path)?;
+	Ok(metadata.accessed()?)
+}
+
 fn main() -> Result<(), StrErr> {
 	cargo::core::maybe_allow_nightly_features();
 	let config = match Config::default() {
@@ -153,7 +158,14 @@ fn main() -> Result<(), StrErr> {
 		let final_time = data.times.get(f).unwrap();
 		println!("final time {:?}", final_time);
 		let externs = externs(cmd);
-		println!("final args {:?}", externs);
+		let mut unused_externs = Vec::new();
+		for (name, path) in externs.iter() {
+			let date = modified_date(path)?;
+			if date < *final_time {
+				unused_externs.push(name);
+			}
+		}
+		println!("unused crates: {:?}", unused_externs);
 	}
 	Ok(())
 }
