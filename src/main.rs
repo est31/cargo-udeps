@@ -2,6 +2,9 @@ extern crate cargo;
 
 use std::fmt::Display;
 use std::sync::Arc;
+use std::time::Instant;
+use std::collections::HashMap;
+use std::sync::Mutex;
 use cargo::core::shell::Shell;
 use cargo::core::compiler::{Executor, DefaultExecutor};
 use cargo::util::process_builder::ProcessBuilder;
@@ -70,12 +73,31 @@ impl<T :Display> From<T> for StrErr {
 	}
 }
 
-struct Exec;
+struct ExecData {
+	times :HashMap<PackageId, Instant>,
+}
+
+impl ExecData {
+	fn new() -> Self {
+		Self {
+			times : HashMap::new(),
+		}
+	}
+}
+
+struct Exec {
+	data :Arc<Mutex<ExecData>>,
+}
 
 impl Executor for Exec {
 	fn exec(&self, cmd :ProcessBuilder, id :PackageId, target :&Target,
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+		{
+			// TODO unwrap used
+			let mut bt = self.data.lock().unwrap();
+			bt.times.insert(id, Instant::now());
+		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
 	}
@@ -96,9 +118,10 @@ fn main() -> Result<(), StrErr> {
 	let mode = CompileMode::Check { test : false };
 	let compile_opts = args.compile_options(&config, mode, Some(&ws))?;
 
-
-	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec);
+	let data = Arc::new(Mutex::new(ExecData::new()));
+	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
-	//println!("Hello, world!");
+	let data = data.lock()?;
+	println!("Done {:?}", data.times);
 	Ok(())
 }
