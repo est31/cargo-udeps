@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
@@ -216,16 +216,20 @@ fn main() -> Result<(), StrErr> {
 		println!("final time {:?}", final_time);
 		let cmd_info = cmd_info(cmd);
 		let analysis = cmd_info.get_save_analysis()?;
-		let ids = analysis.prelude.external_crates.iter()
-			.map(|e| &e.id)
-			.collect::<Vec<_>>();
-		println!("{:?}", ids);
-		/*let mut unused_externs = Vec::new();
+		let names = analysis.prelude.external_crates.iter()
+			.map(|e| &e.id.name)
+			.collect::<HashSet<_>>();
+		let mut unused_externs = Vec::new();
+		for (ext, _path) in cmd_info.externs.iter() {
+			if !names.contains(&ext) {
+				unused_externs.push(ext);
+			}
+		}
 		if !unused_externs.is_empty() {
 			println!("unused crates: {:?}", unused_externs);
 		} else {
 			println!("All deps seem to have been used.");
-		}*/
+		}
 	}
 	Ok(())
 }
