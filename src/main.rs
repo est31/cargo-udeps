@@ -2,6 +2,7 @@ extern crate cargo;
 
 use std::fmt::Display;
 use std::sync::Arc;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -107,9 +108,28 @@ impl Executor for Exec {
 	}
 }
 
-fn externs(cmd :&ProcessBuilder) -> Vec<(&str, &str)> {
-	let mut externs = Vec::new();
+#[derive(Debug)]
+struct CmdInfo {
+	crate_name :String,
+	extra_filename :String,
+	out_dir :String,
+	externs :Vec<(String, String)>,
+}
+
+impl CmdInfo {
+	fn get_save_analysis_path(&self) -> PathBuf {
+		Path::new(&self.out_dir)
+			.join("save-analysis")
+			.join(self.crate_name.clone() + &self.extra_filename + ".json")
+	}
+}
+
+fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 	let mut args_iter = cmd.get_args().iter();
+	let mut crate_name = None;
+	let mut extra_filename = None;
+	let mut out_dir = None;
+	let mut externs = Vec::<(String, String)>::new();
 	while let Some(v) = args_iter.next() {
 		if v == "--extern" {
 			let arg = args_iter.next()
@@ -117,7 +137,7 @@ fn externs(cmd :&ProcessBuilder) -> Vec<(&str, &str)> {
 				.map(|a| {
 					let mut splitter = a.split("=");
 					if let (Some(n), Some(p)) = (splitter.next(), splitter.next()) {
-						(n, p)
+						(n.to_owned(), p.to_owned())
 					} else {
 						panic!("invalid format for extern arg: {}", a);
 					}
@@ -125,14 +145,40 @@ fn externs(cmd :&ProcessBuilder) -> Vec<(&str, &str)> {
 			if let Some(e) = arg {
 				externs.push(e);
 			}
+		} else if v == "--crate-name" {
+			if let Some(name) = args_iter.next() {
+				crate_name = Some(name.to_str()
+					.expect("non-utf8 crate names not supported")
+					.to_owned());
+			}
+		} else if v == "--out-dir" {
+			if let Some(d) = args_iter.next() {
+				out_dir = Some(d.to_str()
+					.expect("non-utf8 crate names not supported")
+					.to_owned());
+			}
+		} else if v == "-C" {
+			if let Some(arg) = args_iter.next() {
+				let arg = arg.to_str().expect("non-utf8 args not supported atm");
+				let mut splitter = arg.split("=");
+				if let (Some(n), Some(p)) = (splitter.next(), splitter.next()) {
+					if n == "extra-filename" {
+						extra_filename = Some(p.to_owned());
+					}
+				}
+			}
 		}
 	}
-	externs
-}
+	let crate_name = crate_name.unwrap();
+	let extra_filename = extra_filename.unwrap();
+	let out_dir = out_dir.unwrap();
 
-fn modified_date(path :&str) -> Result<SystemTime, StrErr> {
-	let metadata = std::fs::metadata(path)?;
-	Ok(metadata.accessed()?)
+	CmdInfo {
+		crate_name,
+		extra_filename,
+		out_dir,
+		externs,
+	}
 }
 
 fn main() -> Result<(), StrErr> {
@@ -158,19 +204,15 @@ fn main() -> Result<(), StrErr> {
 	if let Some((f, cmd)) = &data.final_crate {
 		let final_time = data.times.get(f).unwrap();
 		println!("final time {:?}", final_time);
-		let externs = externs(cmd);
-		let mut unused_externs = Vec::new();
-		for (name, path) in externs.iter() {
-			let date = modified_date(path)?;
-			if date < *final_time {
-				unused_externs.push(name);
-			}
-		}
+		let cmd_info = cmd_info(cmd);
+		println!("{:?}", cmd_info.get_save_analysis_path());
+		//Path::from(cmd_info.out_dir).push(cmd_info.crate_name + cmd_info.extra_filename);
+		/*let mut unused_externs = Vec::new();
 		if !unused_externs.is_empty() {
 			println!("unused crates: {:?}", unused_externs);
 		} else {
 			println!("All deps seem to have been used.");
-		}
+		}*/
 	}
 	Ok(())
 }
