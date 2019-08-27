@@ -92,7 +92,7 @@ struct Exec {
 }
 
 impl Executor for Exec {
-	fn exec(&self, cmd :ProcessBuilder, id :PackageId, target :&Target,
+	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 		{
@@ -101,6 +101,7 @@ impl Executor for Exec {
 			bt.times.insert(id, SystemTime::now());
 			bt.final_crate = Some((id, cmd.clone()));
 		}
+		cmd.arg("-Z").arg("save-analysis");
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
 	}
