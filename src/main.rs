@@ -128,7 +128,9 @@ impl CmdInfo {
 			.join(self.crate_name.clone() + &self.extra_filename + ".json")
 	}
 	fn get_save_analysis(&self) -> Result<CrateSaveAnalysis, StrErr> {
-		let f = std::fs::read_to_string(self.get_save_analysis_path())?;
+		let p = self.get_save_analysis_path();
+		println!("Loading save analysis from {:?}", p);
+		let f = std::fs::read_to_string(p)?;
 		let res = serde_json::from_str(&f)?;
 		Ok(res)
 	}
@@ -210,10 +212,8 @@ fn main() -> Result<(), StrErr> {
 	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
-	println!("Done {:?}", data.times);
 	if let Some((f, cmd)) = &data.final_crate {
 		let final_time = data.times.get(f).unwrap();
-		println!("final time {:?}", final_time);
 		let cmd_info = cmd_info(cmd);
 		let analysis = cmd_info.get_save_analysis()?;
 		let names = analysis.prelude.external_crates.iter()
