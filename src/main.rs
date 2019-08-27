@@ -1,4 +1,8 @@
 extern crate cargo;
+extern crate serde;
+extern crate serde_json;
+
+mod defs;
 
 use std::fmt::Display;
 use std::sync::Arc;
@@ -6,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
 use cargo::core::compiler::{Executor, DefaultExecutor};
 use cargo::util::process_builder::ProcessBuilder;
@@ -122,6 +127,11 @@ impl CmdInfo {
 			.join("save-analysis")
 			.join(self.crate_name.clone() + &self.extra_filename + ".json")
 	}
+	fn get_save_analysis(&self) -> Result<CrateSaveAnalysis, StrErr> {
+		let f = std::fs::read_to_string(self.get_save_analysis_path())?;
+		let res = serde_json::from_str(&f)?;
+		Ok(res)
+	}
 }
 
 fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
@@ -205,8 +215,11 @@ fn main() -> Result<(), StrErr> {
 		let final_time = data.times.get(f).unwrap();
 		println!("final time {:?}", final_time);
 		let cmd_info = cmd_info(cmd);
-		println!("{:?}", cmd_info.get_save_analysis_path());
-		//Path::from(cmd_info.out_dir).push(cmd_info.crate_name + cmd_info.extra_filename);
+		let analysis = cmd_info.get_save_analysis()?;
+		let ids = analysis.prelude.external_crates.iter()
+			.map(|e| &e.id)
+			.collect::<Vec<_>>();
+		println!("{:?}", ids);
 		/*let mut unused_externs = Vec::new();
 		if !unused_externs.is_empty() {
 			println!("unused crates: {:?}", unused_externs);
