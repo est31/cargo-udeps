@@ -116,6 +116,7 @@ impl Executor for Exec {
 #[derive(Debug)]
 struct CmdInfo {
 	crate_name :String,
+	crate_type :String,
 	extra_filename :String,
 	out_dir :String,
 	externs :Vec<(String, String)>,
@@ -123,9 +124,16 @@ struct CmdInfo {
 
 impl CmdInfo {
 	fn get_save_analysis_path(&self) -> PathBuf {
+		let maybe_lib = if self.crate_type == "lib" {
+			"lib"
+		} else {
+			""
+		};
+		let filename = maybe_lib.to_owned() +
+			&self.crate_name + &self.extra_filename + ".json";
 		Path::new(&self.out_dir)
 			.join("save-analysis")
-			.join(self.crate_name.clone() + &self.extra_filename + ".json")
+			.join(filename)
 	}
 	fn get_save_analysis(&self) -> Result<CrateSaveAnalysis, StrErr> {
 		let p = self.get_save_analysis_path();
@@ -139,6 +147,7 @@ impl CmdInfo {
 fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
+	let mut crate_type = None;
 	let mut extra_filename = None;
 	let mut out_dir = None;
 	let mut externs = Vec::<(String, String)>::new();
@@ -163,6 +172,12 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 					.expect("non-utf8 crate names not supported")
 					.to_owned());
 			}
+		} else if v == "--crate-type" {
+			if let Some(ty) = args_iter.next() {
+				crate_type = Some(ty.to_str()
+					.expect("non-utf8 crate names not supported")
+					.to_owned());
+			}
 		} else if v == "--out-dir" {
 			if let Some(d) = args_iter.next() {
 				out_dir = Some(d.to_str()
@@ -182,11 +197,13 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 		}
 	}
 	let crate_name = crate_name.unwrap();
+	let crate_type = crate_type.unwrap();
 	let extra_filename = extra_filename.unwrap();
 	let out_dir = out_dir.unwrap();
 
 	CmdInfo {
 		crate_name,
+		crate_type,
 		extra_filename,
 		out_dir,
 		externs,
