@@ -124,6 +124,7 @@ struct CmdInfo {
 	crate_name :String,
 	crate_type :String,
 	extra_filename :String,
+	cap_lints_allow :bool,
 	out_dir :String,
 	externs :Vec<(String, String)>,
 }
@@ -155,6 +156,7 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 	let mut crate_name = None;
 	let mut crate_type = None;
 	let mut extra_filename = None;
+	let mut cap_lints_allow = false;
 	let mut out_dir = None;
 	let mut externs = Vec::<(String, String)>::new();
 	while let Some(v) = args_iter.next() {
@@ -184,6 +186,12 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 					.expect("non-utf8 crate names not supported")
 					.to_owned());
 			}
+		} else if v == "--cap-lints" {
+			if let Some(c) = args_iter.next() {
+				if c == "allow" {
+					cap_lints_allow = true;
+				}
+			}
 		} else if v == "--out-dir" {
 			if let Some(d) = args_iter.next() {
 				out_dir = Some(d.to_str()
@@ -211,6 +219,7 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 		crate_name,
 		crate_type,
 		extra_filename,
+		cap_lints_allow,
 		out_dir,
 		externs,
 	}
