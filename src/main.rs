@@ -17,11 +17,14 @@ use cargo::util::process_builder::ProcessBuilder;
 use cargo::core::package_id::PackageId;
 use cargo::core::manifest::Target;
 use cargo::util::errors::CargoResult;
-use cargo::util::command_prelude::{App, subcommand, opt, ArgMatchesExt,
+use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 
 fn cli() -> App {
-	subcommand("udeps")
+	App::new("cargo-udeps")
+		.arg(Arg::with_name("dummy")
+			.hidden(true)
+			.possible_value("udeps"))
 		.about("Check a local package and all of its dependencies for errors")
 		.arg(opt("quiet", "No output printed to stdout").short("q"))
 		.arg_package_spec(
