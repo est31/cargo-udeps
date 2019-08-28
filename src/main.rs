@@ -111,6 +111,8 @@ impl Executor for Exec {
 			bt.times.insert(id, SystemTime::now());
 			bt.final_crate = Some((id, cmd.clone()));
 		}
+		std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
+			r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 		cmd.arg("-Z").arg("save-analysis");
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
