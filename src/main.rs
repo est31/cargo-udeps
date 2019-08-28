@@ -25,7 +25,7 @@ fn cli() -> App {
 		.arg(Arg::with_name("dummy")
 			.hidden(true)
 			.possible_value("udeps"))
-		.about("Check a local package and all of its dependencies for errors")
+		.about("Find unused dependencies in your Cargo.toml")
 		.arg(opt("quiet", "No output printed to stdout").short("q"))
 		.arg_package_spec(
 			"Package(s) to check",
@@ -65,12 +65,13 @@ Note that `--exclude` has to be specified in conjunction with the `--all` flag.
 
 Compilation can be configured via the use of profiles which are configured in
 the manifest. The default profile for this command is `dev`, but passing
-the `--release` flag will use the `release` profile instead.
+the `--release` flag will use the `release` profile instead. ")
 
+/*
 The `--profile test` flag can be used to check unit tests with the
 `#[cfg(test)]` attribute.
 ",
-		)
+		)*/
 }
 
 #[derive(Debug)]
