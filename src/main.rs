@@ -105,15 +105,19 @@ impl Executor for Exec {
 	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+
+		let cmd_info = cmd_info(&cmd);
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 			bt.times.insert(id, SystemTime::now());
 			bt.final_crate = Some((id, cmd.clone()));
 		}
-		std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
-			r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
-		cmd.arg("-Z").arg("save-analysis");
+		if !cmd_info.cap_lints_allow {
+			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
+				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
+			cmd.arg("-Z").arg("save-analysis");
+		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
 	}
