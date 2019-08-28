@@ -2,7 +2,8 @@
 
 Find unused dependencies in Cargo.toml.
 
-Needs Rust stable to compile and Rust nightly to run.
+While compilation of this tool also works on Rust stable,
+it needs Rust nightly to actually run.
 
 ```
 cargo install --git https://github.com/est31/cargo-udeps
@@ -16,9 +17,12 @@ cargo +nightly udeps
 
 ## Known bugs
 
-There are no false positives, but some unused crates might not be detected.
-This includes crates used by std and its dependencies as well as crates that
-are already being used by dependencies of the studied crate.
+* Some unused crates might not be detected.
+  This includes crates used by std and its dependencies as well as crates that
+  are already being used by dependencies of the studied crate.
+
+* Crates are currently only handled on a per name basis.
+  Two crates with the same name but different versions would be a problem.
 
 ### License
 [license]: #license
