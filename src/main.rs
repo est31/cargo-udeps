@@ -84,6 +84,7 @@ impl<T :Display> From<T> for StrErr {
 }
 
 struct ExecData {
+	relevant_cmd_infos :Vec<CmdInfo>,
 	times :HashMap<PackageId, SystemTime>,
 	final_crate :Option<(PackageId, ProcessBuilder)>,
 }
@@ -91,6 +92,7 @@ struct ExecData {
 impl ExecData {
 	fn new() -> Self {
 		Self {
+			relevant_cmd_infos : Vec::new(),
 			times : HashMap::new(),
 			final_crate : None,
 		}
@@ -110,6 +112,12 @@ impl Executor for Exec {
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
+
+			// If the crate is not a library crate,
+			// we are not interested in its information.
+			if !cmd_info.cap_lints_allow {
+				bt.relevant_cmd_infos.push(cmd_info.clone());
+			}
 			bt.times.insert(id, SystemTime::now());
 			bt.final_crate = Some((id, cmd.clone()));
 		}
@@ -123,7 +131,7 @@ impl Executor for Exec {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct CmdInfo {
 	crate_name :String,
 	crate_type :String,
@@ -248,24 +256,33 @@ fn main() -> Result<(), StrErr> {
 	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
-	if let Some((f, cmd)) = &data.final_crate {
-		let final_time = data.times.get(f).unwrap();
-		let cmd_info = cmd_info(cmd);
+
+	let mut used_externs = HashSet::new();
+	let mut externs = HashSet::new();
+
+	for cmd_info in data.relevant_cmd_infos.iter() {
 		let analysis = cmd_info.get_save_analysis()?;
-		let names = analysis.prelude.external_crates.iter()
+		analysis.prelude.external_crates.iter()
 			.map(|e| &e.id.name)
-			.collect::<HashSet<_>>();
-		let mut unused_externs = Vec::new();
-		for (ext, _path) in cmd_info.externs.iter() {
-			if !names.contains(&ext) {
-				unused_externs.push(ext);
-			}
+			.for_each(|e| {
+				used_externs.insert(e.clone());
+			});
+		cmd_info.externs.iter()
+			.for_each(|(e, _path)| {
+				externs.insert(e.clone());
+			});
+	}
+
+	let mut unused_externs = Vec::new();
+	for ext in externs.iter() {
+		if !used_externs.contains(ext) {
+			unused_externs.push(ext);
 		}
-		if !unused_externs.is_empty() {
-			println!("unused crates: {:?}", unused_externs);
-		} else {
-			println!("All deps seem to have been used.");
-		}
+	}
+	if !unused_externs.is_empty() {
+		println!("unused crates: {:?}", unused_externs);
+	} else {
+		println!("All deps seem to have been used.");
 	}
 	Ok(())
 }
