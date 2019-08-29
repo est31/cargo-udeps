@@ -17,6 +17,11 @@ Then run it using:
 cargo +nightly udeps
 ```
 
+It either prints out a "unused crates" line listing the crates,
+or it prints out a line saying that no crates were unused.
+
+Note that the tool can only work if all local crates were fresh.
+
 ## Known bugs
 
 * Some unused crates might not be detected.
