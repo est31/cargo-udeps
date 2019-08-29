@@ -16,6 +16,7 @@ use cargo::util::process_builder::ProcessBuilder;
 use cargo::core::package_id::PackageId;
 use cargo::core::manifest::Target;
 use cargo::util::errors::CargoResult;
+use cargo::core::compiler::Unit;
 use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 
@@ -94,14 +95,16 @@ impl ExecData {
 	}
 }
 
-struct Exec {
+struct DryRunExec {
 	data :Arc<Mutex<ExecData>>,
 }
 
-impl Executor for Exec {
-	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
-			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
-			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+struct Exec;
+
+impl Executor for DryRunExec {
+	fn exec(&self, cmd :ProcessBuilder, _id :PackageId, _target :&Target,
+			_mode :CompileMode, _on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
+			_on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
 		let cmd_info = cmd_info(&cmd);
 		{
@@ -114,6 +117,20 @@ impl Executor for Exec {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
 			}
 		}
+		Ok(())
+	}
+	fn force_rebuild(&self, _unit :&Unit) -> bool {
+		true
+	}
+}
+
+impl Executor for Exec {
+	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
+			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
+			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+
+		let cmd_info = cmd_info(&cmd);
+
 		if !cmd_info.cap_lints_allow {
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
@@ -246,8 +263,12 @@ fn main() -> Result<(), StrErr> {
 	let compile_opts = args.compile_options(&config, mode, Some(&ws))?;
 
 	let data = Arc::new(Mutex::new(ExecData::new()));
-	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
+
+	let dry_exec :Arc<dyn Executor + 'static> = Arc::new(DryRunExec { data : data.clone() });
+	cargo::ops::compile_with_exec(&ws, &compile_opts, &dry_exec)?;
+	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec);
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
+
 	let data = data.lock()?;
 
 	let mut used_externs = HashSet::new();
