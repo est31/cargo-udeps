@@ -20,7 +20,8 @@ cargo +nightly udeps
 It either prints out a "unused crates" line listing the crates,
 or it prints out a line saying that no crates were unused.
 
-Note that the tool can only work if all local crates were fresh.
+Note that the tool has to actually invoke rustc for all local crates.
+If this can't be provided, it might not find some unused crates.
 
 ## Known bugs
 
