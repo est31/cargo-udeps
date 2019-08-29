@@ -7,8 +7,7 @@ mod defs;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Mutex;
 use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
@@ -85,16 +84,12 @@ impl<T :Display> From<T> for StrErr {
 
 struct ExecData {
 	relevant_cmd_infos :Vec<CmdInfo>,
-	times :HashMap<PackageId, SystemTime>,
-	final_crate :Option<(PackageId, ProcessBuilder)>,
 }
 
 impl ExecData {
 	fn new() -> Self {
 		Self {
 			relevant_cmd_infos : Vec::new(),
-			times : HashMap::new(),
-			final_crate : None,
 		}
 	}
 }
@@ -118,8 +113,6 @@ impl Executor for Exec {
 			if !cmd_info.cap_lints_allow {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
 			}
-			bt.times.insert(id, SystemTime::now());
-			bt.final_crate = Some((id, cmd.clone()));
 		}
 		if !cmd_info.cap_lints_allow {
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
