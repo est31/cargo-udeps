@@ -136,7 +136,7 @@ struct CmdInfo {
 
 impl CmdInfo {
 	fn get_save_analysis_path(&self) -> PathBuf {
-		let maybe_lib = if self.crate_type == "rlib" || self.crate_type == "lib" {
+		let maybe_lib = if self.crate_type.ends_with("lib") {
 			"lib"
 		} else {
 			""
