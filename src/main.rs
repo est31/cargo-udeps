@@ -274,6 +274,7 @@ fn main() -> Result<(), StrErr> {
 	}
 	if !unused_externs.is_empty() {
 		println!("unused crates: {:?}", unused_externs);
+		std::process::exit(1);
 	} else {
 		println!("All deps seem to have been used.");
 	}
