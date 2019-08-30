@@ -2,6 +2,7 @@
 name = "cargo-udeps"
 version = "0.1.0"
 authors = ["est31 <MTest31@outlook.com>"]
+repository = "https://github.com/est31/cargo-udeps"
 license = "MIT/Apache-2.0"
 edition = "2015"
 
