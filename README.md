@@ -1,5 +1,9 @@
 ## cargo-udeps
 
+
+[![crates.io](https://img.shields.io/crates/v/cargo-udeps.svg)](https://crates.io/crates/cargo-udeps)
+[![dependency status](https://deps.rs/repo/github/est31/cargo-udeps/status.svg)](https://deps.rs/repo/github/est31/cargo-udeps)
+
 Find unused dependencies in Cargo.toml.
 
 While compilation of this tool also works on Rust stable,
