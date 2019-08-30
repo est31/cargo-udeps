@@ -8,7 +8,7 @@ it needs Rust nightly to actually run.
 Installation:
 
 ```
-cargo install --git https://github.com/est31/cargo-udeps
+cargo install cargo-udeps
 ```
 
 Then run it using:
