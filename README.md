@@ -36,6 +36,14 @@ If this can't be provided, it might not find some unused crates.
 * Crates are currently only handled on a per name basis.
   Two crates with the same name but different versions would be a problem.
 
+## Trophy case
+
+This is a list of unused dependencies that were found using cargo-udeps.
+You are welcome to expand it:
+
+* https://github.com/nushell/nushell/pull/519
+* https://github.com/servo/pathfinder/pull/236
+
 ### License
 [license]: #license
 
