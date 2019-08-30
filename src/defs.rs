@@ -25,13 +25,6 @@ pub struct Span {
 	pub column_end :u32,
 }
 
-impl Span {
-	/// Obtains file_name.rs:10:32 like format of the span
-	pub fn display_str(&self) -> String {
-		format!("{}:{}:{}", self.file_name, self.line_start, self.column_start)
-	}
-}
-
 #[derive(Deserialize, Debug)]
 pub struct ExternalCrate {
 	pub num :u32,
