@@ -6,6 +6,8 @@ description = "Find unused dependencies in Cargo.toml"
 repository = "https://github.com/est31/cargo-udeps"
 license = "MIT/Apache-2.0"
 readme = "README.md"
+keywords = ["cargo"]
+categories = ["development-tools", "development-tools::cargo-plugins"]
 edition = "2015"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
