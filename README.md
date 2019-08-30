@@ -38,7 +38,7 @@ If this can't be provided, it might not find some unused crates.
 
 ## Trophy case
 
-This is a list of unused dependencies that were found using cargo-udeps.
+This is a list of cases where unused dependencies were found using cargo-udeps.
 You are welcome to expand it:
 
 * https://github.com/nushell/nushell/pull/519
