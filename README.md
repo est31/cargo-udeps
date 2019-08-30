@@ -43,6 +43,8 @@ You are welcome to expand it:
 
 * https://github.com/nushell/nushell/pull/519
 * https://github.com/servo/pathfinder/pull/236
+* https://github.com/oconnor663/shared_child.rs/commit/5929637f5cf1bebc5d608b4d98fd5c8a10626712
+* https://github.com/oconnor663/bao/commit/d216ee7c04e3587925dee68cce0b2a1ba44bc1d2
 
 ### License
 [license]: #license
