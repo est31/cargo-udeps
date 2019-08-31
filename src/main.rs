@@ -22,6 +22,7 @@ use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 
 fn cli() -> App {
 	App::new("cargo-udeps")
+		.version(env!("CARGO_PKG_VERSION"))
 		.arg(Arg::with_name("dummy")
 			.hidden(true)
 			.possible_value("udeps"))
