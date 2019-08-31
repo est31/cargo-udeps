@@ -218,10 +218,10 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 			}
 		}
 	}
-	let crate_name = crate_name.unwrap();
-	let crate_type = crate_type.unwrap();
-	let extra_filename = extra_filename.unwrap();
-	let out_dir = out_dir.unwrap();
+	let crate_name = crate_name.expect("crate name needed");
+	let crate_type = crate_type.expect("crate type needed");
+	let extra_filename = extra_filename.expect("extra-filename needed");
+	let out_dir = out_dir.expect("outdir needed");
 
 	CmdInfo {
 		crate_name,
