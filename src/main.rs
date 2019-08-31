@@ -16,6 +16,7 @@ use cargo::util::process_builder::ProcessBuilder;
 use cargo::core::package_id::PackageId;
 use cargo::core::manifest::Target;
 use cargo::util::errors::CargoResult;
+use cargo::core::shell::Verbosity;
 use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 
@@ -240,6 +241,7 @@ fn main() -> Result<(), StrErr> {
 			cargo::exit_with_error(e.into(), &mut shell)
 		}
 	};
+	config.shell().set_verbosity(Verbosity::Normal);
 	let app = cli();
 	let args = app.get_matches();
 	let ws = args.workspace(&config)?;
