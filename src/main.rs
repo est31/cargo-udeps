@@ -105,7 +105,9 @@ impl Executor for Exec {
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
-		let cmd_info = cmd_info(&cmd);
+		let cmd_info = cmd_info(&cmd).unwrap_or_else(|e| {
+			panic!("Couldn't compile crate {:?}: {:?}", id, e);
+		});
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
@@ -159,7 +161,7 @@ impl CmdInfo {
 	}
 }
 
-fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
+fn cmd_info(cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
 	let mut crate_type = None;
@@ -218,19 +220,19 @@ fn cmd_info(cmd :&ProcessBuilder) -> CmdInfo {
 			}
 		}
 	}
-	let crate_name = crate_name.expect("crate name needed");
+	let crate_name = crate_name.ok_or("crate name needed")?;
 	let crate_type = crate_type.unwrap_or("bin".to_owned());
-	let extra_filename = extra_filename.expect("extra-filename needed");
-	let out_dir = out_dir.expect("outdir needed");
+	let extra_filename = extra_filename.ok_or("extra-filename needed")?;
+	let out_dir = out_dir.ok_or("outdir needed")?;
 
-	CmdInfo {
+	Ok(CmdInfo {
 		crate_name,
 		crate_type,
 		extra_filename,
 		cap_lints_allow,
 		out_dir,
 		externs,
-	}
+	})
 }
 
 fn main() -> Result<(), StrErr> {
