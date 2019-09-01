@@ -1,6 +1,7 @@
 extern crate cargo;
 extern crate serde;
 extern crate serde_json;
+extern crate which;
 
 mod defs;
 
@@ -85,12 +86,18 @@ impl<T :Display> From<T> for StrErr {
 }
 
 struct ExecData {
+	cargo_exe :Option<String>,
 	relevant_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
 	fn new() -> Self {
+		let cargo_exe = which::which("cargo")
+			.map_err(|e| println!("warning: couldn't load cargo executable file: {:?}", e))
+			.ok()
+			.and_then(|p| p.to_str().map(str::to_owned));
 		Self {
+			cargo_exe,
 			relevant_cmd_infos : Vec::new(),
 		}
 	}
@@ -106,7 +113,7 @@ impl Executor for Exec {
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
 		let cmd_info = cmd_info(&cmd).unwrap_or_else(|e| {
-			panic!("Couldn't compile crate {:?}: {:?}", id, e);
+			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
 		{
 			// TODO unwrap used
@@ -116,6 +123,9 @@ impl Executor for Exec {
 			// we are not interested in its information.
 			if !cmd_info.cap_lints_allow {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
+			}
+			if let Some(cargo_exe) = &bt.cargo_exe {
+				cmd.env(cargo::CARGO_ENV, cargo_exe);
 			}
 		}
 		if !cmd_info.cap_lints_allow {
