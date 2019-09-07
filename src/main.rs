@@ -113,7 +113,7 @@ struct Exec {
 impl Executor for Exec {
 	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
-			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
+			on_stderr_line :&mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
 		let cmd_info = cmd_info(id, &cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
@@ -258,7 +258,7 @@ trait PackageIdExt {
 impl PackageIdExt for PackageId {
 	fn to_cargo_metadata_package_id(self) -> cargo_metadata::PackageId {
 		cargo_metadata::PackageId {
-			repr: format!(
+			repr : format!(
 				"{} {} ({})",
 				self.name(),
 				self.version(),
@@ -286,14 +286,14 @@ fn main() -> Result<(), StrErr> {
 
 	let metadata = {
 		let opts = OutputMetadataOptions {
-			features: args
+			features : args
 				.values_of("features")
 				.map(|vs| vs.map(ToOwned::to_owned).collect())
 				.unwrap_or_default(),
-			no_default_features: args.is_present("no-default-features"),
-			all_features: args.is_present("all-features"),
-			no_deps: false,
-			version: 1,
+			no_default_features : args.is_present("no-default-features"),
+			all_features : args.is_present("all-features"),
+			no_deps : false,
+			version : 1,
 		};
 		let metadata = cargo::ops::output_metadata(&ws, &opts)?;
 		serde_json::from_str::<Metadata>(&serde_json::to_string(&metadata)?)?
