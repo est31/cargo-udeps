@@ -1,4 +1,5 @@
 extern crate cargo;
+extern crate cargo_metadata;
 extern crate serde;
 extern crate serde_json;
 extern crate which;
@@ -8,7 +9,7 @@ mod defs;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
 use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
@@ -20,6 +21,8 @@ use cargo::util::errors::CargoResult;
 use cargo::core::shell::Verbosity;
 use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
+use cargo::ops::OutputMetadataOptions;
+use cargo_metadata::Metadata;
 
 fn cli() -> App {
 	App::new("cargo-udeps")
@@ -112,7 +115,7 @@ impl Executor for Exec {
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
-		let cmd_info = cmd_info(&cmd).unwrap_or_else(|e| {
+		let cmd_info = cmd_info(id, &cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
 		{
@@ -140,6 +143,7 @@ impl Executor for Exec {
 
 #[derive(Clone, Debug)]
 struct CmdInfo {
+	pkg :cargo_metadata::PackageId,
 	crate_name :String,
 	crate_type :String,
 	extra_filename :String,
@@ -171,7 +175,7 @@ impl CmdInfo {
 	}
 }
 
-fn cmd_info(cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
+fn cmd_info(id :PackageId, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
 	let mut crate_type = None;
@@ -230,12 +234,14 @@ fn cmd_info(cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 			}
 		}
 	}
+	let pkg = id.to_cargo_metadata_package_id();
 	let crate_name = crate_name.ok_or("crate name needed")?;
 	let crate_type = crate_type.unwrap_or("bin".to_owned());
 	let extra_filename = extra_filename.ok_or("extra-filename needed")?;
 	let out_dir = out_dir.ok_or("outdir needed")?;
 
 	Ok(CmdInfo {
+		pkg,
 		crate_name,
 		crate_type,
 		extra_filename,
@@ -243,6 +249,23 @@ fn cmd_info(cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 		out_dir,
 		externs,
 	})
+}
+
+trait PackageIdExt {
+	fn to_cargo_metadata_package_id(self) -> cargo_metadata::PackageId;
+}
+
+impl PackageIdExt for PackageId {
+	fn to_cargo_metadata_package_id(self) -> cargo_metadata::PackageId {
+		cargo_metadata::PackageId {
+			repr: format!(
+				"{} {} ({})",
+				self.name(),
+				self.version(),
+				self.source_id().into_url(),
+			),
+		}
+	}
 }
 
 fn main() -> Result<(), StrErr> {
@@ -261,35 +284,137 @@ fn main() -> Result<(), StrErr> {
 	let mode = CompileMode::Check { test : false };
 	let compile_opts = args.compile_options(&config, mode, Some(&ws))?;
 
+	let metadata = {
+		let opts = OutputMetadataOptions {
+			features: args
+				.values_of("features")
+				.map(|vs| vs.map(ToOwned::to_owned).collect())
+				.unwrap_or_default(),
+			no_default_features: args.is_present("no-default-features"),
+			all_features: args.is_present("all-features"),
+			no_deps: false,
+			version: 1,
+		};
+		let metadata = cargo::ops::output_metadata(&ws, &opts)?;
+		serde_json::from_str::<Metadata>(&serde_json::to_string(&metadata)?)?
+	};
+
+	let metadata_packages = metadata.packages
+		.iter()
+		.map(|p| (&p.id, p))
+		.collect::<HashMap<_, _>>();
+
+	let (dependency_names_by_lib_rename, dependency_names_by_lib_true_snakecased_name) = {
+		let mut dependency_names_by_lib_rename = HashMap::new();
+		let mut dependency_names_by_lib_true_snakecased_name = HashMap::new();
+
+		for package in ws.members() {
+			let id = package.package_id().to_cargo_metadata_package_id();
+			let package = metadata_packages
+				.get(&id)
+				.unwrap_or_else(|| panic!("could not find {:?}", id.repr));
+
+			let renamed = package.dependencies
+				.iter()
+				.flat_map(|d| d.rename.as_ref().map(|r| (r, d)))
+				.collect::<HashMap<_, _>>();
+
+			let unrenamed = package.dependencies
+				.iter()
+				.filter(|d| d.rename.is_none())
+				.map(|d| (&d.name, d))
+				.collect::<HashMap<_, _>>();
+
+			for dep in metadata.resolve
+				.as_ref()
+				.and_then(|r| r.nodes.iter().find(|n| n.id == id))
+				.map(|n| &n.deps)
+				.expect("could not find `deps`")
+			{
+				let lib_name = &metadata_packages
+					.get(&dep.pkg)
+					.unwrap_or_else(|| panic!("could not find {:?}", dep.pkg.repr))
+					.targets
+					.iter()
+					.find(|t| t.kind.iter().any(|k| k == "lib" || k == "proc-macro"))
+					.unwrap_or_else(|| {
+						panic!(
+							"could not find any `lib` or `proc-macro` target in {:?}",
+							dep.pkg.repr,
+						)
+					})
+					.name;
+				let dependency = &renamed.get(&dep.name)
+					.or_else(|| unrenamed.get(lib_name))
+					.unwrap_or_else(|| panic!("could not find {:?}", dep.pkg.repr));
+				let dependency_name = dependency.rename.as_ref().unwrap_or(&dependency.name);
+
+				dependency_names_by_lib_rename
+					.entry(id.clone())
+					.or_insert_with(HashMap::new)
+					.insert(&dep.name, dependency_name);
+
+				let lib_name_snakecased = lib_name.replace('-', "_");
+				if let Some(dependency_name2) = dependency_names_by_lib_true_snakecased_name
+					.entry(id.clone())
+					.or_insert_with(HashMap::new)
+					.insert(lib_name_snakecased.clone(), dependency_name)
+				{
+					return Err(StrErr(format!(
+						"current implementation cannot handle multiple crates with the same `lib` name:\n\
+						 {id:?}\n\
+						 ├ {dependency_name1:?} → {lib_name_snakecased:?}\n\
+						 └ {dependency_name2:?} → {lib_name_snakecased:?}",
+						id = id,
+						dependency_name1 = dependency_name,
+						dependency_name2 = dependency_name2,
+						lib_name_snakecased = lib_name_snakecased,
+					)));
+				}
+			}
+		}
+
+		(dependency_names_by_lib_rename, dependency_names_by_lib_true_snakecased_name)
+	};
+
 	let data = Arc::new(Mutex::new(ExecData::new()));
 	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
 
-	let mut used_externs = HashSet::new();
-	let mut externs = HashSet::new();
+	let mut used_dependencies = HashSet::new();
+	let mut dependencies = HashSet::new();
 
 	for cmd_info in data.relevant_cmd_infos.iter() {
 		let analysis = cmd_info.get_save_analysis()?;
-		analysis.prelude.external_crates.iter()
-			.map(|e| &e.id.name)
-			.for_each(|e| {
-				used_externs.insert(e.clone());
-			});
-		cmd_info.externs.iter()
-			.for_each(|(e, _path)| {
-				externs.insert(e.clone());
-			});
-	}
-
-	let mut unused_externs = Vec::new();
-	for ext in externs.iter() {
-		if !used_externs.contains(ext) {
-			unused_externs.push(ext);
+		for ext in &analysis.prelude.external_crates {
+			if let Some(dependency_name) = dependency_names_by_lib_true_snakecased_name
+				.get(&cmd_info.pkg)
+				.and_then(|names| names.get(&ext.id.name))
+			{
+				used_dependencies.insert((&cmd_info.pkg.repr, *dependency_name));
+			}
+		}
+		for (name, _) in &cmd_info.externs {
+			let dependency_name = dependency_names_by_lib_rename
+				.get(&cmd_info.pkg)
+				.and_then(|names| names.get(name))
+				.unwrap_or_else(|| panic!("could not find {:?}", name));
+			dependencies.insert((&cmd_info.pkg.repr, *dependency_name));
 		}
 	}
-	if !unused_externs.is_empty() {
-		println!("unused crates: {:?}", unused_externs);
+
+	let mut unused_dependencies = BTreeMap::new();
+	for (id, dependency) in dependencies {
+		if !used_dependencies.contains(&(id, dependency)) {
+			unused_dependencies
+				.entry(id)
+				.or_insert_with(BTreeSet::new)
+				.insert(dependency);
+		}
+	}
+	if !unused_dependencies.values().all(BTreeSet::is_empty) {
+		println!("unused dependencies: {:#?}", unused_dependencies);
 		std::process::exit(1);
 	} else {
 		println!("All deps seem to have been used.");
