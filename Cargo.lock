@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-udeps"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cargo 0.38.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
