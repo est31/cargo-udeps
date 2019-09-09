@@ -47,6 +47,9 @@ You are welcome to expand it:
 * https://github.com/oconnor663/bao/commit/d216ee7c04e3587925dee68cce0b2a1ba44bc1d2
 * https://github.com/dabreegster/abstreet/commit/03b685673bebbc95e2bcbd7c85358547bcffe8c3
 * https://github.com/rust-lang/crater/pull/446
+* https://github.com/kodegenix/kg-tree/commit/0270ec495887cf0ff7580155db4ff12664614ee8
+* https://github.com/opereon/opereon/commit/4d29cf174c0b178c1484f698ceb0e654f95a78d0
+* https://github.com/djg/audioipc-2/commit/de0fc58cf1e87079027fce06b50eeffa6ae23d54
 
 ### License
 [license]: #license
