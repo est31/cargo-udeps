@@ -398,7 +398,8 @@ fn main() -> Result<(), StrErr> {
 		for (name, _) in &cmd_info.externs {
 			let dependency_name = dependency_names_by_lib_rename
 				.get(&cmd_info.pkg)
-				.and_then(|names| names.get(name))
+				.unwrap_or_else(|| panic!("could not find {:?}", cmd_info.pkg))
+				.get(name)
 				.unwrap_or_else(|| panic!("could not find {:?}", name));
 			dependencies.insert((&cmd_info.pkg.repr, *dependency_name));
 		}
