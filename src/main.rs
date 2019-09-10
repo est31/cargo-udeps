@@ -314,6 +314,11 @@ fn main() -> Result<(), StrErr> {
 				.get(&id)
 				.unwrap_or_else(|| panic!("could not find {:?}", id.repr));
 
+			let resolve = metadata.resolve
+				.as_ref()
+				.and_then(|r| r.nodes.iter().find(|n| n.id == id))
+				.expect("could not find crate in resolve");
+
 			let renamed = package.dependencies
 				.iter()
 				.flat_map(|d| d.rename.as_ref().map(|r| (r, d)))
@@ -325,17 +330,11 @@ fn main() -> Result<(), StrErr> {
 				.map(|d| (&d.name, d))
 				.collect::<HashMap<_, _>>();
 
-			for dep in metadata.resolve
-				.as_ref()
-				.and_then(|r| r.nodes.iter().find(|n| n.id == id))
-				.map(|n| &n.deps)
-				.expect("could not find `deps`")
-			{
-				let lib_name = &metadata_packages
+			for dep in resolve.deps.iter() {
+				let pkg = &metadata_packages
 					.get(&dep.pkg)
-					.unwrap_or_else(|| panic!("could not find {:?}", dep.pkg.repr))
-					.targets
-					.iter()
+					.unwrap_or_else(|| panic!("could not find {:?}", dep.pkg.repr));
+				let lib_name = &pkg.targets.iter()
 					.find(|t| t.kind.iter().any(|k| k == "lib" || k == "proc-macro"))
 					.unwrap_or_else(|| {
 						panic!(
@@ -346,6 +345,7 @@ fn main() -> Result<(), StrErr> {
 					.name;
 				let dependency = &renamed.get(&dep.name)
 					.or_else(|| unrenamed.get(lib_name))
+					.or_else(|| unrenamed.get(&pkg.name))
 					.unwrap_or_else(|| panic!("could not find {:?}", dep.pkg.repr));
 				let dependency_name = dependency.rename.as_ref().unwrap_or(&dependency.name);
 
