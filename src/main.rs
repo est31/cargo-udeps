@@ -79,12 +79,20 @@ The `--profile test` flag can be used to check unit tests with the
 		)*/
 }
 
-#[derive(Debug)]
 pub struct StrErr(String);
 
 impl<T :Display> From<T> for StrErr {
 	fn from(v :T) -> Self {
 		StrErr(format!("{}", v))
+	}
+}
+
+impl std::fmt::Debug for StrErr {
+	fn fmt(&self, f :&mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+		// Difference of this debug impl to the one provided by the derive macro
+		// is that special chars like newlines and " aren't escaped.
+		// We have some human-readable errors where newlines help with the output.
+		write!(f, "StrErr(\"{}\")", self.0)
 	}
 }
 
