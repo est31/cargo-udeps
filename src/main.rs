@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
 use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
-use cargo::core::compiler::{Executor, DefaultExecutor};
+use cargo::core::compiler::{Executor, DefaultExecutor, Unit};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::core::package_id::PackageId;
 use cargo::core::manifest::Target;
@@ -126,26 +126,35 @@ impl Executor for Exec {
 		let cmd_info = cmd_info(id, &cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
+		let is_path = id.source_id().is_path();
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 
 			// If the crate is not a library crate,
 			// we are not interested in its information.
-			if !cmd_info.cap_lints_allow {
+			if is_path {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
+			}
+			if (!cmd_info.cap_lints_allow) != is_path {
+				eprintln!("warning: (!cap_lints_allow)={} differs from is_path={} for id={}",
+					!cmd_info.cap_lints_allow, is_path, id);
 			}
 			if let Some(cargo_exe) = &bt.cargo_exe {
 				cmd.env(cargo::CARGO_ENV, cargo_exe);
 			}
 		}
-		if !cmd_info.cap_lints_allow {
+		if is_path {
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			cmd.arg("-Z").arg("save-analysis");
 		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
 		Ok(())
+	}
+	fn force_rebuild(&self, unit :&Unit) -> bool {
+		let source_id = (*unit).pkg.summary().source_id();
+		source_id.is_path()
 	}
 }
 
