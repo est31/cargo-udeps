@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.4 - September 11, 2019
+
+- Support for running multiple times
+
 ## Release 0.1.3 - September 10, 2019
 
 - Bugfixes around the dependency renaming feature
