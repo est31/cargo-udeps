@@ -1,8 +1,23 @@
 language: rust
-rust:
-  - nightly
-  - beta
-  - stable
+
+matrix:
+  include:
+    - name: stable-x86_64-pc-windows-msvc
+      os: windows
+      rust: stable
+    - name: stable-x86_64-apple-darwin
+      os: osx
+      rust: stable
+    - name: stable-x86_64-unknown-linux-gnu
+      dist: bionic
+      rust: stable
+    - name: beta-x86_64-unknown-linux-gnu
+      dist: bionic
+      rust: beta
+    - name: nightly-x86_64-unknown-linux-gnu
+      dist: bionic
+      rust: nightly
+
 script:
   - cargo build --verbose
   - cargo test --verbose
