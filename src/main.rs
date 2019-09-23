@@ -8,7 +8,7 @@ mod defs;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
 use defs::CrateSaveAnalysis;
 use cargo::core::shell::Shell;
@@ -21,7 +21,6 @@ use cargo::core::shell::Verbosity;
 use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 use cargo::core::InternedString;
-use cargo::core::dependency::Dependency;
 use cargo::ops::Packages;
 
 fn cli() -> App {
@@ -123,7 +122,7 @@ impl Executor for Exec {
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line :&mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
-		let cmd_info = cmd_info(id, &cmd).unwrap_or_else(|e| {
+		let cmd_info = cmd_info(id, target.is_custom_build(), &cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
 		let is_path = id.source_id().is_path();
@@ -161,6 +160,7 @@ impl Executor for Exec {
 #[derive(Clone, Debug)]
 struct CmdInfo {
 	pkg :PackageId,
+	custom_build :bool,
 	crate_name :String,
 	crate_type :String,
 	extra_filename :String,
@@ -192,7 +192,7 @@ impl CmdInfo {
 	}
 }
 
-fn cmd_info(id :PackageId, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
+fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
 	let mut crate_type = None;
@@ -259,6 +259,7 @@ fn cmd_info(id :PackageId, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 
 	Ok(CmdInfo {
 		pkg,
+		custom_build,
 		crate_name,
 		crate_type,
 		extra_filename,
@@ -270,8 +271,10 @@ fn cmd_info(id :PackageId, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
 
 #[derive(Debug, Default)]
 struct DependencyNames {
-	by_extern_crate_name :HashMap<String, InternedString>,
-	by_lib_true_snakecased_name :HashMap<String, InternedString>,
+	normal_dev_by_extern_crate_name :HashMap<String, InternedString>,
+	normal_dev_by_lib_true_snakecased_name :HashMap<String, InternedString>,
+	build_by_extern_crate_name :HashMap<String, InternedString>,
+	build_by_lib_true_snakecased_name :HashMap<String, InternedString>,
 }
 
 fn main() -> Result<(), StrErr> {
@@ -316,8 +319,8 @@ fn main() -> Result<(), StrErr> {
 
 			if let Some(lib) = from.targets().iter().find(|t| t.is_lib()) {
 				let name = resolve.extern_crate_name(from.package_id(), from.package_id(), lib)?;
-				dependency_names.by_extern_crate_name.insert(name.clone(), from.name());
-				dependency_names.by_lib_true_snakecased_name.insert(name, from.name());
+				dependency_names.normal_dev_by_extern_crate_name.insert(name.clone(), from.name());
+				dependency_names.normal_dev_by_lib_true_snakecased_name.insert(name, from.name());
 			}
 
 			let from = from.package_id();
@@ -333,22 +336,37 @@ fn main() -> Result<(), StrErr> {
 				let extern_crate_name = resolve.extern_crate_name(from, to_pkg, to_lib)?;
 				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
 
-				for name_in_toml in deps.iter().map(Dependency::name_in_toml) {
-					dependency_names.by_extern_crate_name
-						.insert(extern_crate_name.clone(), name_in_toml);
+				for dep in deps {
+					let (by_extern_crate_name, by_lib_true_snakecased_name, prefix) = if dep.is_build() {
+						(
+							&mut dependency_names.build_by_extern_crate_name,
+							&mut dependency_names.build_by_lib_true_snakecased_name,
+							"build-",
+						)
+					} else {
+						(
+							&mut dependency_names.normal_dev_by_extern_crate_name,
+							&mut dependency_names.normal_dev_by_lib_true_snakecased_name,
+							"(dev-)",
+						)
+					};
 
-					if let Some(name_in_toml2) = dependency_names.by_lib_true_snakecased_name
-						.insert(lib_true_snakecased_name.clone(), name_in_toml)
+					by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+
+					if let Some(name_in_toml) = by_lib_true_snakecased_name
+						.insert(lib_true_snakecased_name.clone(), dep.name_in_toml())
 					{
 						return Err(StrErr(format!(
 							"current implementation cannot handle multiple crates with the same `lib` name:\n\
 							 `{id}`\n\
-							 ├── {name_in_toml1:?} → {lib_true_snakecased_name:?}\n\
-							 ├── {name_in_toml2:?} → {lib_true_snakecased_name:?}\n\
-							 └── ..",
+							 └── {prefix}dependencies\n    \
+							     ├── {name_in_toml1:?} → {lib_true_snakecased_name:?}\n    \
+							     ├── {name_in_toml2:?} → {lib_true_snakecased_name:?}\n    \
+							     └── ..",
 							id = from,
-							name_in_toml1 = name_in_toml,
-							name_in_toml2 = name_in_toml2,
+							prefix = prefix,
+							name_in_toml1 = dep.name_in_toml(),
+							name_in_toml2 = name_in_toml,
 							lib_true_snakecased_name = lib_true_snakecased_name,
 						)));
 					}
@@ -365,22 +383,42 @@ fn main() -> Result<(), StrErr> {
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
 
-	let mut used_dependencies = HashSet::new();
-	let mut dependencies = HashSet::new();
+	let mut used_normal_dev_dependencies = HashSet::new();
+	let mut used_build_dependencies = HashSet::new();
+	let mut normal_dev_dependencies = HashSet::new();
+	let mut build_dependencies = HashSet::new();
 
 	for cmd_info in data.relevant_cmd_infos.iter() {
 		let analysis = cmd_info.get_save_analysis()?;
 		// may not be workspace member
 		if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
+			let (
+				by_extern_crate_name,
+				by_lib_true_snakecased_name,
+				used_dependencies,
+				dependencies
+			) = if cmd_info.custom_build {
+				(
+					&dependency_names.build_by_extern_crate_name,
+					&dependency_names.build_by_lib_true_snakecased_name,
+					&mut used_build_dependencies,
+					&mut build_dependencies,
+				)
+			} else {
+				(
+					&dependency_names.normal_dev_by_extern_crate_name,
+					&dependency_names.normal_dev_by_lib_true_snakecased_name,
+					&mut used_normal_dev_dependencies,
+					&mut normal_dev_dependencies,
+				)
+			};
 			for ext in &analysis.prelude.external_crates {
-				if let Some(dependency_name) = dependency_names.by_lib_true_snakecased_name
-					.get(&ext.id.name)
-				{
+				if let Some(dependency_name) = by_lib_true_snakecased_name.get(&ext.id.name) {
 					used_dependencies.insert((cmd_info.pkg, *dependency_name));
 				}
 			}
 			for (name, _) in &cmd_info.externs {
-				let dependency_name = dependency_names.by_extern_crate_name
+				let dependency_name = by_extern_crate_name
 					.get(name)
 					.unwrap_or_else(|| panic!("could not find {:?}", name));
 				dependencies.insert((cmd_info.pkg, *dependency_name));
@@ -388,27 +426,49 @@ fn main() -> Result<(), StrErr> {
 		}
 	}
 
-	let mut unused_dependencies = BTreeMap::new();
-	for (id, dependency) in dependencies {
-		if !used_dependencies.contains(&(id, dependency)) {
-			unused_dependencies
-				.entry(id)
-				.or_insert_with(BTreeSet::new)
-				.insert(dependency);
+	let mut unused_dependencies = HashMap::new();
+	for (dependencies, used_dependencies, custom_build) in &[
+		(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
+		(&build_dependencies, &used_build_dependencies, true),
+	] {
+		for (id, dependency) in *dependencies {
+			if !used_dependencies.contains(&(*id, *dependency)) {
+				let (normal_dev, build) = unused_dependencies
+					.entry(id)
+					.or_insert_with(|| (BTreeSet::new(), BTreeSet::new()));
+				if *custom_build {
+					build.insert(dependency);
+				} else {
+					normal_dev.insert(dependency);
+				}
+			}
 		}
 	}
-	if !unused_dependencies.values().all(BTreeSet::is_empty) {
+	if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
 		println!("unused dependencies:");
-		for (member, dependencies) in unused_dependencies {
+		for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
 			println!("`{}`", member);
-			let mut dependencies = dependencies.into_iter().peekable();
-			while let Some(dependency) = dependencies.next() {
-				let c = if dependencies.peek().is_some() {
-					'├'
-				} else {
-					'└'
-				};
-				println!("{}─── {:?}", c, dependency);
+			let (edge, joint) = if build_dependencies.is_empty() {
+				(' ', '└')
+			} else {
+				('│', '├')
+			};
+			for (dependencies, edge, joint, prefix) in &[
+				(normal_dev_dependencies, edge, joint, "(dev-)"),
+				(build_dependencies, ' ', '└', "build-"),
+			] {
+				if !dependencies.is_empty() {
+					println!("{}─── {}dependencies", joint, prefix);
+					let mut dependencies = dependencies.iter().peekable();
+					while let Some(dependency) = dependencies.next() {
+						let joint = if dependencies.peek().is_some() {
+							'├'
+						} else {
+							'└'
+						};
+						println!("{}    {}─── {:?}", edge, joint, dependency);
+					}
+				}
 			}
 		}
 		std::process::exit(1);
