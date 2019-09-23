@@ -16,7 +16,7 @@ edition = "2015"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 cargo = "0.38"
-which = "2.0.1"
+which = "3.0"
 
 [profile.dev]
 debug = false
