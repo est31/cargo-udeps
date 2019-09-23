@@ -356,19 +356,22 @@ fn main() -> Result<(), StrErr> {
 					if let Some(name_in_toml) = by_lib_true_snakecased_name
 						.insert(lib_true_snakecased_name.clone(), dep.name_in_toml())
 					{
-						return Err(StrErr(format!(
-							"current implementation cannot handle multiple crates with the same `lib` name:\n\
-							 `{id}`\n\
-							 └── {prefix}dependencies\n    \
-							     ├── {name_in_toml1:?} → {lib_true_snakecased_name:?}\n    \
-							     ├── {name_in_toml2:?} → {lib_true_snakecased_name:?}\n    \
-							     └── ..",
-							id = from,
-							prefix = prefix,
-							name_in_toml1 = dep.name_in_toml(),
-							name_in_toml2 = name_in_toml,
-							lib_true_snakecased_name = lib_true_snakecased_name,
-						)));
+						// If they are same, they should point at the same `Package`.
+						if dep.name_in_toml() != name_in_toml {
+							return Err(StrErr(format!(
+								"current implementation cannot handle multiple crates with the same `lib` name:\n\
+								`{id}`\n\
+								└── {prefix}dependencies\n    \
+									├── {name_in_toml1:?} → {lib_true_snakecased_name:?}\n    \
+									├── {name_in_toml2:?} → {lib_true_snakecased_name:?}\n    \
+									└── ..",
+								id = from,
+								prefix = prefix,
+								name_in_toml1 = dep.name_in_toml(),
+								name_in_toml2 = name_in_toml,
+								lib_true_snakecased_name = lib_true_snakecased_name,
+							)));
+						}
 					}
 
 				}
