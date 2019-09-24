@@ -162,7 +162,7 @@ impl Executor for Exec {
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			cmd.arg("-Z").arg("save-analysis");
 		}
-		DefaultExecutor.exec(cmd, id, target, mode, on_stderr_line, on_stdout_line)?;
+		DefaultExecutor.exec(cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
 	}
 	fn force_rebuild(&self, unit :&Unit) -> bool {
