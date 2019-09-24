@@ -1,3 +1,4 @@
+extern crate ansi_term;
 extern crate cargo;
 extern crate serde;
 extern crate serde_json;
@@ -12,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
 use std::ops::Deref as _;
 use defs::CrateSaveAnalysis;
+use ansi_term::Colour;
 use cargo::core::shell::Shell;
 use cargo::core::compiler::{Executor, DefaultExecutor, Unit};
 use cargo::util::process_builder::ProcessBuilder;
@@ -98,17 +100,19 @@ impl std::fmt::Debug for StrErr {
 
 struct ExecData {
 	cargo_exe :Option<String>,
+	supports_color :bool,
 	relevant_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
-	fn new() -> Self {
+	fn new(supports_color :bool) -> Self {
 		let cargo_exe = which::which("cargo")
 			.map_err(|e| println!("warning: couldn't load cargo executable file: {:?}", e))
 			.ok()
 			.and_then(|p| p.to_str().map(str::to_owned));
 		Self {
 			cargo_exe,
+			supports_color,
 			relevant_cmd_infos : Vec::new(),
 		}
 	}
@@ -137,8 +141,17 @@ impl Executor for Exec {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
 			}
 			if (!cmd_info.cap_lints_allow) != is_path {
-				eprintln!("warning: (!cap_lints_allow)={} differs from is_path={} for id={}",
-					!cmd_info.cap_lints_allow, is_path, id);
+				on_stderr_line(&format!(
+					"{} (!cap_lints_allow)={} differs from is_path={} for id={}",
+					if bt.supports_color {
+						Colour::Yellow.bold().paint("warning:").to_string()
+					} else {
+						"warning:".to_owned()
+					},
+					!cmd_info.cap_lints_allow,
+					is_path,
+					id,
+				))?;
 			}
 			if let Some(cargo_exe) = &bt.cargo_exe {
 				cmd.env(cargo::CARGO_ENV, cargo_exe);
@@ -184,9 +197,20 @@ impl CmdInfo {
 			.join("save-analysis")
 			.join(filename)
 	}
-	fn get_save_analysis(&self) -> Result<CrateSaveAnalysis, StrErr> {
+	fn get_save_analysis(&self, shell :&mut Shell) -> Result<CrateSaveAnalysis, StrErr> {
 		let p = self.get_save_analysis_path();
-		println!("Loading save analysis from {:?}", p);
+		shell.print_ansi(
+			format!(
+				"{} Loading save analysis from {:?}\n",
+				if shell.supports_color() {
+					Colour::Cyan.bold().paint("info:").to_string()
+				} else {
+					"info:".to_owned()
+				},
+				p,
+			)
+			.as_ref(),
+		)?;
 		let f = std::fs::read_to_string(p)?;
 		let res = serde_json::from_str(&f)?;
 		Ok(res)
@@ -422,7 +446,7 @@ fn main() -> Result<(), StrErr> {
 		})
 		.collect::<CargoResult<HashMap<_, _>>>()?;
 
-	let data = Arc::new(Mutex::new(ExecData::new()));
+	let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
 	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
@@ -433,7 +457,7 @@ fn main() -> Result<(), StrErr> {
 	let mut build_dependencies = HashSet::new();
 
 	for cmd_info in data.relevant_cmd_infos.iter() {
-		let analysis = cmd_info.get_save_analysis()?;
+		let analysis = cmd_info.get_save_analysis(&mut ws.config().shell())?;
 		// may not be workspace member
 		if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
 			let (
