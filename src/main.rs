@@ -1,3 +1,4 @@
+extern crate ansi_term;
 extern crate cargo;
 extern crate serde;
 extern crate serde_json;
@@ -5,12 +6,14 @@ extern crate which;
 
 mod defs;
 
-use std::fmt::Display;
+use std::fmt::{Display, Write as _};
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
+use std::ops::Deref as _;
 use defs::CrateSaveAnalysis;
+use ansi_term::Colour;
 use cargo::core::shell::Shell;
 use cargo::core::compiler::{Executor, DefaultExecutor, Unit};
 use cargo::util::process_builder::ProcessBuilder;
@@ -20,7 +23,7 @@ use cargo::util::errors::CargoResult;
 use cargo::core::shell::Verbosity;
 use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
-use cargo::core::InternedString;
+use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
 
 fn cli() -> App {
@@ -97,17 +100,19 @@ impl std::fmt::Debug for StrErr {
 
 struct ExecData {
 	cargo_exe :Option<String>,
+	supports_color :bool,
 	relevant_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
-	fn new() -> Self {
+	fn new(supports_color :bool) -> Self {
 		let cargo_exe = which::which("cargo")
 			.map_err(|e| println!("warning: couldn't load cargo executable file: {:?}", e))
 			.ok()
 			.and_then(|p| p.to_str().map(str::to_owned));
 		Self {
 			cargo_exe,
+			supports_color,
 			relevant_cmd_infos : Vec::new(),
 		}
 	}
@@ -136,8 +141,17 @@ impl Executor for Exec {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
 			}
 			if (!cmd_info.cap_lints_allow) != is_path {
-				eprintln!("warning: (!cap_lints_allow)={} differs from is_path={} for id={}",
-					!cmd_info.cap_lints_allow, is_path, id);
+				on_stderr_line(&format!(
+					"{} (!cap_lints_allow)={} differs from is_path={} for id={}",
+					if bt.supports_color {
+						Colour::Yellow.bold().paint("warning:").to_string()
+					} else {
+						"warning:".to_owned()
+					},
+					!cmd_info.cap_lints_allow,
+					is_path,
+					id,
+				))?;
 			}
 			if let Some(cargo_exe) = &bt.cargo_exe {
 				cmd.env(cargo::CARGO_ENV, cargo_exe);
@@ -183,9 +197,20 @@ impl CmdInfo {
 			.join("save-analysis")
 			.join(filename)
 	}
-	fn get_save_analysis(&self) -> Result<CrateSaveAnalysis, StrErr> {
+	fn get_save_analysis(&self, shell :&mut Shell) -> Result<CrateSaveAnalysis, StrErr> {
 		let p = self.get_save_analysis_path();
-		println!("Loading save analysis from {:?}", p);
+		shell.print_ansi(
+			format!(
+				"{} Loading save analysis from {:?}\n",
+				if shell.supports_color() {
+					Colour::Cyan.bold().paint("info:").to_string()
+				} else {
+					"info:".to_owned()
+				},
+				p,
+			)
+			.as_ref(),
+		)?;
 		let f = std::fs::read_to_string(p)?;
 		let res = serde_json::from_str(&f)?;
 		Ok(res)
@@ -272,9 +297,112 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> Result<C
 #[derive(Debug, Default)]
 struct DependencyNames {
 	normal_dev_by_extern_crate_name :HashMap<String, InternedString>,
-	normal_dev_by_lib_true_snakecased_name :HashMap<String, InternedString>,
+	normal_dev_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
 	build_by_extern_crate_name :HashMap<String, InternedString>,
-	build_by_lib_true_snakecased_name :HashMap<String, InternedString>,
+	build_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+}
+
+impl DependencyNames {
+	fn new(
+		from :&Package,
+		packages :&HashMap<PackageId, &Package>,
+		resolve :&Resolve,
+		shell :&mut Shell,
+	) -> CargoResult<Self> {
+		fn ambiguous_names(
+			names :&HashMap<String, HashSet<InternedString>>,
+		) -> BTreeMap<InternedString, &str> {
+			names
+				.iter()
+				.filter(|(_, v)| v.len() > 1)
+				.flat_map(|(k, v)| v.iter().map(move |&v| (v, k.deref())))
+				.collect()
+		}
+
+		let mut this = Self::default();
+
+		if let Some(lib) = from.targets().iter().find(|t| t.is_lib()) {
+			let name = resolve.extern_crate_name(from.package_id(), from.package_id(), lib)?;
+			this.normal_dev_by_extern_crate_name.insert(name.clone(), from.name());
+			this.normal_dev_by_lib_true_snakecased_name
+				.entry(name.clone())
+				.or_insert_with(HashSet::new)
+				.insert(from.name());
+		}
+
+		let from = from.package_id();
+
+		for (to_pkg, deps) in resolve.deps(from) {
+			let to_lib = packages
+				.get(&to_pkg)
+				.unwrap_or_else(|| panic!("could not find `{}`", &to_pkg))
+				.targets()
+				.iter()
+				.find(|t| t.is_lib())
+				.unwrap_or_else(|| panic!("`{}` does not have any `lib` target", to_pkg));
+
+			let extern_crate_name = resolve.extern_crate_name(from, to_pkg, to_lib)?;
+			let lib_true_snakecased_name = to_lib.name().replace('-', "_");
+
+			for dep in deps {
+				let (by_extern_crate_name, by_lib_true_snakecased_name) = if dep.is_build() {
+					(
+						&mut this.build_by_extern_crate_name,
+						&mut this.build_by_lib_true_snakecased_name,
+					)
+				} else {
+					(
+						&mut this.normal_dev_by_extern_crate_name,
+						&mut this.normal_dev_by_lib_true_snakecased_name,
+					)
+				};
+
+				by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+
+				// Two `Dependenc`ies with the same name point at the same `Package`.
+				by_lib_true_snakecased_name
+					.entry(lib_true_snakecased_name.clone())
+					.or_insert_with(HashSet::new)
+					.insert(dep.name_in_toml());
+			}
+		}
+
+		let ambiguous_normal_dev = ambiguous_names(&this.normal_dev_by_lib_true_snakecased_name);
+		let ambiguous_build = ambiguous_names(&this.build_by_lib_true_snakecased_name);
+
+		if !(ambiguous_normal_dev.is_empty() && ambiguous_build.is_empty()) {
+			let mut msg = format!(
+				"Currently `cargo-udeps` cannot distinguish multiple crates with the same `lib` name. This may cause false negative\n\
+				 `{}`\n",
+				from,
+			);
+			let (edge, joint) = if ambiguous_build.is_empty() {
+				(' ', '└')
+			} else {
+				('│', '├')
+			};
+			for (ambiguous, edge, joint, prefix) in &[
+				(ambiguous_normal_dev, edge, joint, "(dev-)"),
+				(ambiguous_build, ' ', '└', "build-"),
+			] {
+				if !ambiguous.is_empty() {
+					writeln!(msg, "{}─── {}dependencies", joint, prefix).unwrap();
+					let mut ambiguous = ambiguous.iter().peekable();
+					while let Some((dep, lib)) = ambiguous.next() {
+						let joint = if ambiguous.peek().is_some() {
+							'├'
+						} else {
+							'└'
+						};
+						writeln!(msg, "{}    {}─── {:?} → {:?}", edge, joint, dep, lib).unwrap();
+					}
+				}
+			}
+			shell.warn(msg.trim_end())?;
+		}
+
+		Ok(this)
+	}
 }
 
 fn main() -> Result<(), StrErr> {
@@ -309,79 +437,16 @@ fn main() -> Result<(), StrErr> {
 		.map(|p| (p.package_id(), p))
 		.collect::<HashMap<_, _>>();
 
-	let dependency_names = {
-		let mut dependency_names = HashMap::new();
+	let dependency_names = ws
+		.members()
+		.map(|from| {
+             let val = DependencyNames::new(from, &packages, &resolve, &mut ws.config().shell())?;
+			 let key = from.package_id();
+			 Ok((key, val))
+		})
+		.collect::<CargoResult<HashMap<_, _>>>()?;
 
-		for from in ws.members() {
-			let dependency_names = dependency_names
-				.entry(from.package_id())
-				.or_insert_with(DependencyNames::default);
-
-			if let Some(lib) = from.targets().iter().find(|t| t.is_lib()) {
-				let name = resolve.extern_crate_name(from.package_id(), from.package_id(), lib)?;
-				dependency_names.normal_dev_by_extern_crate_name.insert(name.clone(), from.name());
-				dependency_names.normal_dev_by_lib_true_snakecased_name.insert(name, from.name());
-			}
-
-			let from = from.package_id();
-			for (to_pkg, deps) in resolve.deps(from) {
-				let to_lib = packages
-					.get(&to_pkg)
-					.unwrap_or_else(|| panic!("could not find `{}`", &to_pkg))
-					.targets()
-					.iter()
-					.find(|t| t.is_lib())
-					.unwrap_or_else(|| panic!("`{}` does not have any `lib` target", to_pkg));
-
-				let extern_crate_name = resolve.extern_crate_name(from, to_pkg, to_lib)?;
-				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
-
-				for dep in deps {
-					let (by_extern_crate_name, by_lib_true_snakecased_name, prefix) = if dep.is_build() {
-						(
-							&mut dependency_names.build_by_extern_crate_name,
-							&mut dependency_names.build_by_lib_true_snakecased_name,
-							"build-",
-						)
-					} else {
-						(
-							&mut dependency_names.normal_dev_by_extern_crate_name,
-							&mut dependency_names.normal_dev_by_lib_true_snakecased_name,
-							"(dev-)",
-						)
-					};
-
-					by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
-
-					if let Some(name_in_toml) = by_lib_true_snakecased_name
-						.insert(lib_true_snakecased_name.clone(), dep.name_in_toml())
-					{
-						// If they are same, they should point at the same `Package`.
-						if dep.name_in_toml() != name_in_toml {
-							return Err(StrErr(format!(
-								"current implementation cannot handle multiple crates with the same `lib` name:\n\
-								`{id}`\n\
-								└── {prefix}dependencies\n    \
-									├── {name_in_toml1:?} → {lib_true_snakecased_name:?}\n    \
-									├── {name_in_toml2:?} → {lib_true_snakecased_name:?}\n    \
-									└── ..",
-								id = from,
-								prefix = prefix,
-								name_in_toml1 = dep.name_in_toml(),
-								name_in_toml2 = name_in_toml,
-								lib_true_snakecased_name = lib_true_snakecased_name,
-							)));
-						}
-					}
-
-				}
-			}
-		}
-
-		dependency_names
-	};
-
-	let data = Arc::new(Mutex::new(ExecData::new()));
+	let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
 	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 	let data = data.lock()?;
@@ -392,7 +457,7 @@ fn main() -> Result<(), StrErr> {
 	let mut build_dependencies = HashSet::new();
 
 	for cmd_info in data.relevant_cmd_infos.iter() {
-		let analysis = cmd_info.get_save_analysis()?;
+		let analysis = cmd_info.get_save_analysis(&mut ws.config().shell())?;
 		// may not be workspace member
 		if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
 			let (
@@ -416,8 +481,10 @@ fn main() -> Result<(), StrErr> {
 				)
 			};
 			for ext in &analysis.prelude.external_crates {
-				if let Some(dependency_name) = by_lib_true_snakecased_name.get(&ext.id.name) {
-					used_dependencies.insert((cmd_info.pkg, *dependency_name));
+				if let Some(dependency_names) = by_lib_true_snakecased_name.get(&ext.id.name) {
+					for dependency_name in dependency_names {
+						used_dependencies.insert((cmd_info.pkg, *dependency_name));
+					}
 				}
 			}
 			for (name, _) in &cmd_info.externs {
