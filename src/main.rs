@@ -496,7 +496,7 @@ fn main() -> Result<(), StrErr> {
 		}
 	}
 
-	let mut unused_dependencies = HashMap::new();
+	let mut unused_dependencies = BTreeMap::new();
 	for (dependencies, used_dependencies, custom_build) in &[
 		(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
 		(&build_dependencies, &used_build_dependencies, true),
