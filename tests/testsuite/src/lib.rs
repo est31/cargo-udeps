@@ -79,4 +79,3 @@ fn unused_byteorder() {
 	println!("stderr: {}", stderr);
 	assert!(stdout.contains("byteorder"));
 }
-fn main() {}
