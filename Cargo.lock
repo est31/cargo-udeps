@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-udeps"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "ansi_term 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo 0.39.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1040,7 +1040,7 @@ dependencies = [
 name = "testsuite"
 version = "0.1.0"
 dependencies = [
- "cargo-udeps 0.1.4",
+ "cargo-udeps 0.1.5",
 ]
 
 [[package]]
