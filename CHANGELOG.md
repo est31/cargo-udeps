@@ -1,5 +1,11 @@
 # Changelog
 
+## Release 0.1.5 - September 27, 2019
+
+- Downgrade the "same `lib` name" error to warning
+- Distinguish build dependencies from normal/dev ones
+- Start of a testsuite
+
 ## Release 0.1.4 - September 11, 2019
 
 - Support for running multiple times
