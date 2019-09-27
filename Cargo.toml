@@ -1,3 +1,6 @@
+[workspace]
+members = ["tests/testsuite"]
+
 [package]
 name = "cargo-udeps"
 version = "0.1.4"

@@ -1037,6 +1037,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "testsuite"
+version = "0.1.0"
+dependencies = [
+ "cargo-udeps 0.1.4",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
