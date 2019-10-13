@@ -1,6 +1,12 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+**'
+  pull_request:
 
 jobs:
   build:
@@ -58,3 +64,77 @@ jobs:
         with:
           command: test
           args: --verbose
+
+  release:
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-gnu
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-2019
+          - target: x86_64-apple-darwin
+            os: macOS-10.14
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+
+    name: GitHub Release (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: '`rustup-init`'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init https://sh.rustup.rs
+          bash /tmp/rustup-init -y --no-modify-path
+          echo "::add-path::$HOME/.cargo/bin"
+        if: matrix.target == 'x86_64-apple-darwin'
+
+      - name: rust-toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable-${{ matrix.target }}
+          default: true
+        if: matrix.target != 'x86_64-apple-darwin'
+
+      - name: '`cargo build --release`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Create an asset
+        id: asset
+        run: |
+          if ${{ contains(matrix.target, 'pc-windows') }}; then
+            EXE=.exe
+          fi
+          EXECUTABLE="./target/release/${GITHUB_REPOSITORY#*/}$EXE"
+          ASSET_STEM="${GITHUB_REPOSITORY#*/}-${GITHUB_REF#refs/tags/}-${{ matrix.target }}"
+          git archive -o "./$ASSET_STEM.tar" --prefix "$ASSET_STEM/" HEAD
+          tar -xf "./$ASSET_STEM.tar"
+          mv "$EXECUTABLE" "./$ASSET_STEM/"
+          if ${{ contains(matrix.target, 'pc-windows') }}; then
+            ASSET="./$ASSET_STEM.zip"
+            7z a "$ASSET" "./$ASSET_STEM"
+            zipinfo "$ASSET"
+          else
+            ASSET="./$ASSET_STEM.tar.gz"
+            tar -czvf "$ASSET" "./$ASSET_STEM"
+          fi
+          echo "::set-output name=asset::$ASSET"
+        shell: bash
+
+      - name: GH Release
+        uses: softprops/action-gh-release@v0.1.3
+        with:
+          files: ${{ steps.asset.outputs.asset }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
