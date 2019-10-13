@@ -9,13 +9,25 @@ Find unused dependencies in Cargo.toml.
 While compilation of this tool also works on Rust stable,
 it needs Rust nightly to actually run.
 
-Installation:
+### Installation
+
+#### GitHub Releases
+
+<https://github.com/est31/cargo-udeps/releases>
+
+#### `cargo install` ([crates.io](https://crates.io/crates/cargo-udeps))
 
 ```
 cargo install cargo-udeps
 ```
 
-Then run it using:
+#### `cargo install` ([`master`](https://github.com/est31/cargo-udeps/tree/master))
+
+```
+cargo install --git https://github.com/est31/cargo-udeps
+```
+
+### Usage
 
 ```
 cargo +nightly udeps
