@@ -1,0 +1,51 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - stable-x86_64-pc-windows-msvc
+          - stable-x86_64-apple-darwin
+          - stable-x86_64-unknown-linux-gnu
+          - beta-x86_64-unknown-linux-gnu
+          - nightly-x86_64-unknown-linux-gnu
+        include:
+          - toolchain: stable-x86_64-pc-windows-msvc
+            os: windows-2019
+          - toolchain: stable-x86_64-apple-darwin
+            os: macOS-10.14
+          - toolchain: stable-x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+          - toolchain: beta-x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+          - toolchain: nightly-x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+
+    name: ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: rust-toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          default: true
+
+      - name: '`cargo build`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose
+
+      - name: '`cargo test`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
