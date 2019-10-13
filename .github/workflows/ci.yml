@@ -32,11 +32,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
+      # Suppress "Unable to find rustup, installing it now" warning.
+      - name: '`rustup-init`'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init https://sh.rustup.rs
+          bash /tmp/rustup-init -y --no-modify-path
+          echo "::add-path::$HOME/.cargo/bin"
+        if: matrix.toolchain == 'stable-x86_64-apple-darwin'
+
       - name: rust-toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           default: true
+        if: matrix.toolchain != 'stable-x86_64-apple-darwin'
 
       - name: '`cargo build`'
         uses: actions-rs/cargo@v1
