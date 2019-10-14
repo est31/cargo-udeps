@@ -1,10 +1,3 @@
-extern crate ansi_term;
-extern crate cargo;
-extern crate serde;
-extern crate serde_json;
-extern crate which;
-
-#[path="./defs.rs"]
 mod defs;
 
 use std::fmt::{Display, Write as _};
@@ -13,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Mutex;
 use std::ops::Deref as _;
-use self::defs::CrateSaveAnalysis;
+
 use ansi_term::Colour;
 use cargo::core::shell::Shell;
 use cargo::core::compiler::{Executor, DefaultExecutor, Unit};
@@ -26,6 +19,8 @@ use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
 	AppExt, CompileMode, Config};
 use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
+
+use crate::defs::CrateSaveAnalysis;
 
 fn cli() -> App {
 	App::new("cargo-udeps")
