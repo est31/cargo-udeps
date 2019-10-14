@@ -1,5 +1,6 @@
-use serde::Deserialize;
 use std::cmp::Ordering;
+
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub struct CrateDisambiguator(pub u64, pub u64);

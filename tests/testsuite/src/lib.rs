@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use std::process::Output;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
+use std::process::Output;
 
 struct Command {
 	path :PathBuf,
