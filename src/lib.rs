@@ -1,8 +1,9 @@
 mod defs;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::ffi::OsString;
 use std::fmt::{Display, Write as _};
-use std::ops::Deref as _;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -15,46 +16,36 @@ use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
 use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
-use cargo::util::command_prelude::{opt, App, AppExt, Arg, ArgMatchesExt, CompileMode, Config};
-use cargo::util::errors::CargoResult;
+use cargo::util::command_prelude::{ArgMatchesExt, CompileMode};
 use cargo::util::process_builder::ProcessBuilder;
+use cargo::{CargoResult, CliError, CliResult, Config};
+use structopt::StructOpt;
+use structopt::clap::{AppSettings, ArgMatches};
 
 use crate::defs::CrateSaveAnalysis;
 
-fn cli() -> App {
-	App::new("cargo-udeps")
-		.version(env!("CARGO_PKG_VERSION"))
-		.arg(Arg::with_name("dummy")
-			.hidden(true)
-			.possible_value("udeps"))
-		.about("Find unused dependencies in your Cargo.toml")
-		.arg(opt("quiet", "No output printed to stdout").short("q"))
-		.arg_package_spec(
-			"Package(s) to check",
-			"Check all packages in the workspace",
-			"Exclude packages from the check",
-		)
-		.arg_jobs()
-		.arg_targets_all(
-			"Check only this package's library",
-			"Check only the specified binary",
-			"Check all binaries",
-			"Check only the specified example",
-			"Check all examples",
-			"Check only the specified test target",
-			"Check all tests",
-			"Check only the specified bench target",
-			"Check all benches",
-			"Check all targets",
-		)
-		.arg_release("Check artifacts in release mode, with optimizations")
-		.arg(opt("profile", "Profile to build the selected target for").value_name("PROFILE"))
-		.arg_features()
-		.arg_target_triple("Check for the target triple")
-		.arg_target_dir()
-		.arg_manifest_path()
-		.arg_message_format()
-		.after_help(
+pub fn run<I: IntoIterator<Item = OsString>>(args :I) -> CliResult {
+	let args = args.into_iter().collect::<Vec<_>>();
+	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
+	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
+	match opt.run(clap_matches.subcommand_matches("udeps").unwrap()) {
+		Ok(0) => Ok(()),
+		Ok(code) => Err(CliError::code(code)),
+		Err(err) => Err(unimplemented!()),
+	}
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+	about,
+	bin_name = "cargo",
+	global_setting(AppSettings::DeriveDisplayOrder),
+)]
+enum Opt {
+	#[structopt(
+		about,
+		name = "udeps",
+		after_help(
 			"\
 If the `--package` argument is given, then SPEC is a package ID specification
 which indicates which package should be built. If it is not given, then the
@@ -67,13 +58,258 @@ Note that `--exclude` has to be specified in conjunction with the `--all` flag.
 
 Compilation can be configured via the use of profiles which are configured in
 the manifest. The default profile for this command is `dev`, but passing
-the `--release` flag will use the `release` profile instead. ")
+the `--release` flag will use the `release` profile instead."
+		)
+    )]
+	Udeps(OptUdeps),
+}
 
-/*
-The `--profile test` flag can be used to check unit tests with the
-`#[cfg(test)]` attribute.
-",
-		)*/
+#[derive(StructOpt, Debug)]
+struct OptUdeps {
+	#[structopt(short = "q", long, help("No output printed to stdout"))]
+	quiet: bool,
+	#[structopt(long, help("Check all packages in the workspace"))]
+	all: bool,
+	#[structopt(long, help("Check only the specified binary"))]
+	lib: bool,
+	#[structopt(long, help("Check all binaries"))]
+	bins: bool,
+	#[structopt(long, help("Check all examples"))]
+	examples: bool,
+	#[structopt(long, help("Check all tests"))]
+	tests: bool,
+	#[structopt(long, help("Check all benches"))]
+	benches: bool,
+	#[structopt(long, help("Check all targets"))]
+	all_targets: bool,
+	#[structopt(long, help("Check artifacts in release mode, with optimizations"))]
+	release: bool,
+	#[structopt(long, help("Activate all available features"))]
+	all_features: bool,
+	#[structopt(long, help("Do not activate the `default` feature"))]
+	no_default_features: bool,
+	#[structopt(
+		short = "p",
+		long,
+		value_name("SPEC"),
+		min_values(1),
+		number_of_values(1),
+		help("Package(s) to check")
+	)]
+	package: Vec<String>,
+	#[structopt(
+		long,
+		value_name("SPEC"),
+		min_values(1),
+		number_of_values(1),
+		help("Exclude packages from the check")
+	)]
+	exclude: Vec<String>,
+	#[structopt(
+		short = "j",
+		long,
+		value_name("N"),
+		help("Number of parallel jobs, defaults to # of CPUs")
+	)]
+	jobs: Option<String>,
+	#[structopt(
+		long,
+		value_name("NAME"),
+		min_values(0),
+		number_of_values(1),
+		help("Check only the specified bin target")
+	)]
+	bin: Vec<String>,
+	#[structopt(
+		long,
+		value_name("NAME"),
+		min_values(0),
+		number_of_values(1),
+		help("Check only the specified example target")
+	)]
+	example: Vec<String>,
+	#[structopt(
+		long,
+		value_name("NAME"),
+		min_values(0),
+		number_of_values(1),
+		help("Check only the specified test target")
+	)]
+	test: Vec<String>,
+	#[structopt(
+		long,
+		value_name("NAME"),
+		min_values(0),
+		number_of_values(1),
+		help("Check only the specified bench target")
+	)]
+	bench: Vec<String>,
+	#[structopt(
+		long,
+		value_name("PROFILE"),
+		help("Profile to build the selected target for")
+	)]
+	profile: Option<String>,
+	#[structopt(
+		long,
+		value_name("FEATURES"),
+		min_values(1),
+		help("Space-separated list of features to activate")
+	)]
+	features: Vec<String>,
+	#[structopt(long, value_name("TRIPLE"), help("Check for the target triple"))]
+	target: Option<String>,
+	#[structopt(
+		long,
+		value_name("DIRECTORY"),
+		help("Directory for all generated artifacts")
+	)]
+	target_dir: Option<PathBuf>,
+	#[structopt(long, value_name("PATH"), help("Path to Cargo.toml"))]
+	manifest_path: Option<PathBuf>,
+	#[structopt(
+		long,
+		value_name("FMT"),
+		case_insensitive(true),
+		possible_values(&["human", "json", "short"]),
+		default_value = "human",
+		help("Error format")
+	)]
+	message_format: String,
+}
+
+impl OptUdeps {
+	fn run(&self, clap_matches :&ArgMatches) -> Result<i32, StrErr> {
+		cargo::core::maybe_allow_nightly_features();
+		let config = Config::default()?;
+		config.shell().set_verbosity(Verbosity::Normal);
+		let ws = clap_matches.workspace(&config)?;
+		let mode = CompileMode::Check { test : false };
+		let compile_opts = clap_matches.compile_options(&config, mode, Some(&ws))?;
+
+		let (packages, resolve) = cargo::ops::resolve_ws_precisely(
+			&ws,
+			&self.features,
+			self.all_features,
+			self.no_default_features,
+			&Packages::All.to_package_id_specs(&ws)?,
+		)?;
+		let packages = packages
+			.get_many(packages.package_ids())?
+			.into_iter()
+			.map(|p| (p.package_id(), p))
+			.collect::<HashMap<_, _>>();
+
+		let dependency_names = ws
+			.members()
+			.map(|from| {
+				let val = DependencyNames::new(from, &packages, &resolve, &mut ws.config().shell())?;
+				let key = from.package_id();
+				Ok((key, val))
+			})
+			.collect::<CargoResult<HashMap<_, _>>>()?;
+
+		let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
+		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
+		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
+		let data = data.lock()?;
+
+		let mut used_normal_dev_dependencies = HashSet::new();
+		let mut used_build_dependencies = HashSet::new();
+		let mut normal_dev_dependencies = HashSet::new();
+		let mut build_dependencies = HashSet::new();
+
+		for cmd_info in data.relevant_cmd_infos.iter() {
+			let analysis = cmd_info.get_save_analysis(&mut ws.config().shell())?;
+			// may not be workspace member
+			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
+				let (
+					by_extern_crate_name,
+					by_lib_true_snakecased_name,
+					used_dependencies,
+					dependencies
+				) = if cmd_info.custom_build {
+					(
+						&dependency_names.build_by_extern_crate_name,
+						&dependency_names.build_by_lib_true_snakecased_name,
+						&mut used_build_dependencies,
+						&mut build_dependencies,
+					)
+				} else {
+					(
+						&dependency_names.normal_dev_by_extern_crate_name,
+						&dependency_names.normal_dev_by_lib_true_snakecased_name,
+						&mut used_normal_dev_dependencies,
+						&mut normal_dev_dependencies,
+					)
+				};
+				for ext in &analysis.prelude.external_crates {
+					if let Some(dependency_names) = by_lib_true_snakecased_name.get(&ext.id.name) {
+						for dependency_name in dependency_names {
+							used_dependencies.insert((cmd_info.pkg, *dependency_name));
+						}
+					}
+				}
+				for (name, _) in &cmd_info.externs {
+					let dependency_name = by_extern_crate_name
+						.get(name)
+						.unwrap_or_else(|| panic!("could not find {:?}", name));
+					dependencies.insert((cmd_info.pkg, *dependency_name));
+				}
+			}
+		}
+
+		let mut unused_dependencies = BTreeMap::new();
+		for (dependencies, used_dependencies, custom_build) in &[
+			(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
+			(&build_dependencies, &used_build_dependencies, true),
+		] {
+			for (id, dependency) in *dependencies {
+				if !used_dependencies.contains(&(*id, *dependency)) {
+					let (normal_dev, build) = unused_dependencies
+						.entry(id)
+						.or_insert_with(|| (BTreeSet::new(), BTreeSet::new()));
+					if *custom_build {
+						build.insert(dependency);
+					} else {
+						normal_dev.insert(dependency);
+					}
+				}
+			}
+		}
+		if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
+			println!("unused dependencies:");
+			for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
+				println!("`{}`", member);
+				let (edge, joint) = if build_dependencies.is_empty() {
+					(' ', '└')
+				} else {
+					('│', '├')
+				};
+				for (dependencies, edge, joint, prefix) in &[
+					(normal_dev_dependencies, edge, joint, "(dev-)"),
+					(build_dependencies, ' ', '└', "build-"),
+				] {
+					if !dependencies.is_empty() {
+						println!("{}─── {}dependencies", joint, prefix);
+						let mut dependencies = dependencies.iter().peekable();
+						while let Some(dependency) = dependencies.next() {
+							let joint = if dependencies.peek().is_some() {
+								'├'
+							} else {
+								'└'
+							};
+							println!("{}    {}─── {:?}", edge, joint, dependency);
+						}
+					}
+				}
+			}
+			Ok(1)
+		} else {
+			println!("All deps seem to have been used.");
+			Ok(0)
+		}
+	}
 }
 
 pub struct StrErr(String);
@@ -398,147 +634,4 @@ impl DependencyNames {
 
 		Ok(this)
 	}
-}
-
-pub fn main() -> Result<(), StrErr> {
-	cargo::core::maybe_allow_nightly_features();
-	let config = match Config::default() {
-		Ok(cfg) => cfg,
-		Err(e) => {
-			let mut shell = Shell::new();
-			cargo::exit_with_error(e.into(), &mut shell)
-		}
-	};
-	config.shell().set_verbosity(Verbosity::Normal);
-	let app = cli();
-	let args = app.get_matches();
-	let ws = args.workspace(&config)?;
-	let mode = CompileMode::Check { test : false };
-	let compile_opts = args.compile_options(&config, mode, Some(&ws))?;
-
-	let (packages, resolve) = cargo::ops::resolve_ws_precisely(
-		&ws,
-		&args
-			.values_of("features")
-			.map(|vs| vs.map(ToOwned::to_owned).collect::<Vec<_>>())
-			.unwrap_or_default(),
-		args.is_present("all-features"),
-		args.is_present("no-default-features"),
-		&Packages::All.to_package_id_specs(&ws)?,
-	)?;
-	let packages = packages
-		.get_many(packages.package_ids())?
-		.into_iter()
-		.map(|p| (p.package_id(), p))
-		.collect::<HashMap<_, _>>();
-
-	let dependency_names = ws
-		.members()
-		.map(|from| {
-             let val = DependencyNames::new(from, &packages, &resolve, &mut ws.config().shell())?;
-			 let key = from.package_id();
-			 Ok((key, val))
-		})
-		.collect::<CargoResult<HashMap<_, _>>>()?;
-
-	let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
-	let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
-	cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
-	let data = data.lock()?;
-
-	let mut used_normal_dev_dependencies = HashSet::new();
-	let mut used_build_dependencies = HashSet::new();
-	let mut normal_dev_dependencies = HashSet::new();
-	let mut build_dependencies = HashSet::new();
-
-	for cmd_info in data.relevant_cmd_infos.iter() {
-		let analysis = cmd_info.get_save_analysis(&mut ws.config().shell())?;
-		// may not be workspace member
-		if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
-			let (
-				by_extern_crate_name,
-				by_lib_true_snakecased_name,
-				used_dependencies,
-				dependencies
-			) = if cmd_info.custom_build {
-				(
-					&dependency_names.build_by_extern_crate_name,
-					&dependency_names.build_by_lib_true_snakecased_name,
-					&mut used_build_dependencies,
-					&mut build_dependencies,
-				)
-			} else {
-				(
-					&dependency_names.normal_dev_by_extern_crate_name,
-					&dependency_names.normal_dev_by_lib_true_snakecased_name,
-					&mut used_normal_dev_dependencies,
-					&mut normal_dev_dependencies,
-				)
-			};
-			for ext in &analysis.prelude.external_crates {
-				if let Some(dependency_names) = by_lib_true_snakecased_name.get(&ext.id.name) {
-					for dependency_name in dependency_names {
-						used_dependencies.insert((cmd_info.pkg, *dependency_name));
-					}
-				}
-			}
-			for (name, _) in &cmd_info.externs {
-				let dependency_name = by_extern_crate_name
-					.get(name)
-					.unwrap_or_else(|| panic!("could not find {:?}", name));
-				dependencies.insert((cmd_info.pkg, *dependency_name));
-			}
-		}
-	}
-
-	let mut unused_dependencies = BTreeMap::new();
-	for (dependencies, used_dependencies, custom_build) in &[
-		(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
-		(&build_dependencies, &used_build_dependencies, true),
-	] {
-		for (id, dependency) in *dependencies {
-			if !used_dependencies.contains(&(*id, *dependency)) {
-				let (normal_dev, build) = unused_dependencies
-					.entry(id)
-					.or_insert_with(|| (BTreeSet::new(), BTreeSet::new()));
-				if *custom_build {
-					build.insert(dependency);
-				} else {
-					normal_dev.insert(dependency);
-				}
-			}
-		}
-	}
-	if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
-		println!("unused dependencies:");
-		for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
-			println!("`{}`", member);
-			let (edge, joint) = if build_dependencies.is_empty() {
-				(' ', '└')
-			} else {
-				('│', '├')
-			};
-			for (dependencies, edge, joint, prefix) in &[
-				(normal_dev_dependencies, edge, joint, "(dev-)"),
-				(build_dependencies, ' ', '└', "build-"),
-			] {
-				if !dependencies.is_empty() {
-					println!("{}─── {}dependencies", joint, prefix);
-					let mut dependencies = dependencies.iter().peekable();
-					while let Some(dependency) = dependencies.next() {
-						let joint = if dependencies.peek().is_some() {
-							'├'
-						} else {
-							'└'
-						};
-						println!("{}    {}─── {:?}", edge, joint, dependency);
-					}
-				}
-			}
-		}
-		std::process::exit(1);
-	} else {
-		println!("All deps seem to have been used.");
-	}
-	Ok(())
 }

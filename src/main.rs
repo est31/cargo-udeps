@@ -1,5 +1,7 @@
-use cargo_udeps::StrErr;
+use std::env;
 
-fn main() -> Result<(), StrErr> {
-	cargo_udeps::main()
+use cargo::CliResult;
+
+fn main() -> CliResult {
+	cargo_udeps::run(env::args_os())
 }
