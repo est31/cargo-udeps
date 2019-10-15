@@ -335,6 +335,21 @@ impl OptUdeps {
 					}
 				}
 			}
+			if !self.all_targets {
+				println!("Note: These dependencies might be used by other targets.");
+				if !self.lib
+					&& !self.bins
+					&& !self.examples
+					&& !self.tests
+					&& !self.benches
+					&& self.bin.is_empty()
+					&& self.example.is_empty()
+					&& self.test.is_empty()
+					&& self.bench.is_empty()
+				{
+					println!("      To find dependencies that are not used by any target, enable `--all-targets`.");
+				}
+			}
 			Ok(1)
 		} else {
 			println!("All deps seem to have been used.");
