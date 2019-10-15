@@ -96,6 +96,13 @@ struct OptUdeps {
 	#[structopt(
 		short,
 		long,
+		parse(from_occurrences),
+		help("Use verbose output (-vv very verbose/build.rs output)")
+	)]
+	verbose: u64,
+	#[structopt(
+		short,
+		long,
 		value_name("SPEC"),
 		min_values(1),
 		number_of_values(1),
@@ -196,7 +203,11 @@ impl OptUdeps {
 		cargo::core::maybe_allow_nightly_features();
 		let mut config = Config::default()?;
 		config.configure(
-			1,
+			match self.verbose {
+				0 => 0,
+				1 => 1,
+				_ => 2,
+			},
 			if self.quiet { Some(true) } else { None }, // https://docs.rs/cargo/0.39.0/src/cargo/util/config.rs.html#602-604
 			&self.color,
 			self.frozen,
