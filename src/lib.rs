@@ -13,7 +13,6 @@ use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::shell::Verbosity;
 use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode};
@@ -181,8 +180,17 @@ struct OptUdeps {
 impl OptUdeps {
 	fn run(&self, clap_matches :&ArgMatches) -> Result<i32, StrErr> {
 		cargo::core::maybe_allow_nightly_features();
-		let config = Config::default()?;
-		config.shell().set_verbosity(Verbosity::Normal);
+		let mut config = Config::default()?;
+		config.configure(
+			1,
+			if self.quiet { None } else { Some(true) }, // https://docs.rs/cargo/0.39.0/src/cargo/util/config.rs.html#602-604
+			&None,
+			false,
+			false,
+			false,
+			&self.target_dir,
+			&[],
+		)?;
 		let ws = clap_matches.workspace(&config)?;
 		let mode = CompileMode::Check { test : false };
 		let compile_opts = clap_matches.compile_options(&config, mode, Some(&ws))?;
