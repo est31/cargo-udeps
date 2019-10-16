@@ -65,7 +65,7 @@ the `--release` flag will use the `release` profile instead."
 
 #[derive(StructOpt, Debug)]
 struct OptUdeps {
-	#[structopt(short = "q", long, help("No output printed to stdout"))]
+	#[structopt(short, long, help("No output printed to stdout"))]
 	quiet: bool,
 	#[structopt(long, help("Check all packages in the workspace"))]
 	all: bool,
@@ -87,8 +87,14 @@ struct OptUdeps {
 	all_features: bool,
 	#[structopt(long, help("Do not activate the `default` feature"))]
 	no_default_features: bool,
+	#[structopt(long, help("Require Cargo.lock and cache are up to date"))]
+	frozen: bool,
+	#[structopt(long, help("Require Cargo.lock is up to date"))]
+	locked: bool,
+	#[structopt(long, help("Run without accessing the network"))]
+	offline: bool,
 	#[structopt(
-		short = "p",
+		short,
 		long,
 		value_name("SPEC"),
 		min_values(1),
@@ -105,7 +111,7 @@ struct OptUdeps {
 	)]
 	exclude: Vec<String>,
 	#[structopt(
-		short = "j",
+		short,
 		long,
 		value_name("N"),
 		help("Number of parallel jobs, defaults to # of CPUs")
@@ -171,10 +177,18 @@ struct OptUdeps {
 		value_name("FMT"),
 		case_insensitive(true),
 		possible_values(&["human", "json", "short"]),
-		default_value = "human",
+		default_value("human"),
 		help("Error format")
 	)]
 	message_format: String,
+	#[structopt(
+		long,
+		value_name("WHEN"),
+		case_insensitive(false),
+		possible_values(&["auto", "always", "never"]),
+		help("Coloring")
+	)]
+	color: Option<String>,
 }
 
 impl OptUdeps {
@@ -183,11 +197,11 @@ impl OptUdeps {
 		let mut config = Config::default()?;
 		config.configure(
 			1,
-			if self.quiet { None } else { Some(true) }, // https://docs.rs/cargo/0.39.0/src/cargo/util/config.rs.html#602-604
-			&None,
-			false,
-			false,
-			false,
+			if self.quiet { Some(true) } else { None }, // https://docs.rs/cargo/0.39.0/src/cargo/util/config.rs.html#602-604
+			&self.color,
+			self.frozen,
+			self.locked,
+			self.offline,
 			&self.target_dir,
 			&[],
 		)?;
