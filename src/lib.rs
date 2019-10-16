@@ -1,31 +1,25 @@
-extern crate ansi_term;
-extern crate cargo;
-extern crate serde;
-extern crate serde_json;
-extern crate which;
-
-#[path="./defs.rs"]
 mod defs;
 
-use std::fmt::{Display, Write as _};
-use std::sync::Arc;
-use std::path::{Path, PathBuf};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::sync::Mutex;
+use std::fmt::{Display, Write as _};
 use std::ops::Deref as _;
-use self::defs::CrateSaveAnalysis;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use ansi_term::Colour;
-use cargo::core::shell::Shell;
-use cargo::core::compiler::{Executor, DefaultExecutor, Unit};
-use cargo::util::process_builder::ProcessBuilder;
-use cargo::core::package_id::PackageId;
+use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
 use cargo::core::manifest::Target;
-use cargo::util::errors::CargoResult;
+use cargo::core::package_id::PackageId;
+use cargo::core::shell::Shell;
 use cargo::core::shell::Verbosity;
-use cargo::util::command_prelude::{App, Arg, opt, ArgMatchesExt,
-	AppExt, CompileMode, Config};
 use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
+use cargo::util::command_prelude::{opt, App, AppExt, Arg, ArgMatchesExt, CompileMode, Config};
+use cargo::util::errors::CargoResult;
+use cargo::util::process_builder::ProcessBuilder;
+
+use crate::defs::CrateSaveAnalysis;
 
 fn cli() -> App {
 	App::new("cargo-udeps")
