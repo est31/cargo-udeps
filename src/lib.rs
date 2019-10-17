@@ -2,7 +2,7 @@ mod defs;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
-use std::fmt::{Display, Write as _};
+use std::fmt::Write as _;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -27,10 +27,9 @@ pub fn run<I: IntoIterator<Item = OsString>>(args :I) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
 	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
-	match opt.run(clap_matches.subcommand_matches("udeps").unwrap()) {
-		Ok(0) => Ok(()),
-		Ok(code) => Err(CliError::code(code)),
-		Err(err) => Err(unimplemented!()),
+	match opt.run(clap_matches.subcommand_matches("udeps").unwrap())? {
+		0 => Ok(()),
+		code => Err(CliError::code(code)),
 	}
 }
 
@@ -199,7 +198,7 @@ struct OptUdeps {
 }
 
 impl OptUdeps {
-	fn run(&self, clap_matches :&ArgMatches) -> Result<i32, StrErr> {
+	fn run(&self, clap_matches :&ArgMatches) -> CargoResult<i32> {
 		cargo::core::maybe_allow_nightly_features();
 		let mut config = Config::default()?;
 		config.configure(
@@ -245,7 +244,7 @@ impl OptUdeps {
 		let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
 		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
-		let data = data.lock()?;
+		let data = data.lock().unwrap();
 
 		let mut used_normal_dev_dependencies = HashSet::new();
 		let mut used_build_dependencies = HashSet::new();
@@ -342,23 +341,6 @@ impl OptUdeps {
 			println!("All deps seem to have been used.");
 			Ok(0)
 		}
-	}
-}
-
-pub struct StrErr(String);
-
-impl<T :Display> From<T> for StrErr {
-	fn from(v :T) -> Self {
-		StrErr(format!("{}", v))
-	}
-}
-
-impl std::fmt::Debug for StrErr {
-	fn fmt(&self, f :&mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-		// Difference of this debug impl to the one provided by the derive macro
-		// is that special chars like newlines and " aren't escaped.
-		// We have some human-readable errors where newlines help with the output.
-		write!(f, "StrErr(\"{}\")", self.0)
 	}
 }
 
@@ -461,7 +443,7 @@ impl CmdInfo {
 			.join("save-analysis")
 			.join(filename)
 	}
-	fn get_save_analysis(&self, shell :&mut Shell) -> Result<CrateSaveAnalysis, StrErr> {
+	fn get_save_analysis(&self, shell :&mut Shell) -> CargoResult<CrateSaveAnalysis> {
 		let p = self.get_save_analysis_path();
 		shell.print_ansi(
 			format!(
@@ -481,7 +463,7 @@ impl CmdInfo {
 	}
 }
 
-fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> Result<CmdInfo, StrErr> {
+fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoResult<CmdInfo> {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
 	let mut crate_type = None;
@@ -541,10 +523,10 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> Result<C
 		}
 	}
 	let pkg = id;
-	let crate_name = crate_name.ok_or("crate name needed")?;
+	let crate_name = crate_name.ok_or_else(|| failure::err_msg("crate name needed"))?;
 	let crate_type = crate_type.unwrap_or("bin".to_owned());
-	let extra_filename = extra_filename.ok_or("extra-filename needed")?;
-	let out_dir = out_dir.ok_or("outdir needed")?;
+	let extra_filename = extra_filename.ok_or_else(|| failure::err_msg("extra-filename needed"))?;
+	let out_dir = out_dir.ok_or_else(|| failure::err_msg("outdir needed"))?;
 
 	Ok(CmdInfo {
 		pkg,
