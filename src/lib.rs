@@ -3,6 +3,7 @@ mod defs;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
+use std::io::Write;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -23,12 +24,12 @@ use structopt::clap::{AppSettings, ArgMatches};
 
 use crate::defs::CrateSaveAnalysis;
 
-pub fn run<I: IntoIterator<Item = OsString>>(args :I, config :&mut Config) -> CliResult {
+pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Config, stdout: W) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
 	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
 	cargo::core::maybe_allow_nightly_features();
-	match opt.run(config, clap_matches.subcommand_matches("udeps").unwrap())? {
+	match opt.run(config, stdout, clap_matches.subcommand_matches("udeps").unwrap())? {
 		0 => Ok(()),
 		code => Err(CliError::code(code)),
 	}
@@ -199,7 +200,12 @@ struct OptUdeps {
 }
 
 impl OptUdeps {
-	fn run(&self, config: &mut Config, clap_matches :&ArgMatches) -> CargoResult<i32> {
+	fn run<W: Write>(
+		&self,
+		config :&mut Config,
+		mut stdout :W,
+		clap_matches :&ArgMatches
+	) -> CargoResult<i32> {
 		config.configure(
 			match self.verbose {
 				0 => 0,
@@ -309,9 +315,9 @@ impl OptUdeps {
 			}
 		}
 		if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
-			println!("unused dependencies:");
+			writeln!(stdout, "unused dependencies:")?;
 			for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
-				println!("`{}`", member);
+				writeln!(stdout, "`{}`", member)?;
 				let (edge, joint) = if build_dependencies.is_empty() {
 					(' ', '└')
 				} else {
@@ -322,7 +328,7 @@ impl OptUdeps {
 					(build_dependencies, ' ', '└', "build-"),
 				] {
 					if !dependencies.is_empty() {
-						println!("{}─── {}dependencies", joint, prefix);
+						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
 						let mut dependencies = dependencies.iter().peekable();
 						while let Some(dependency) = dependencies.next() {
 							let joint = if dependencies.peek().is_some() {
@@ -330,13 +336,13 @@ impl OptUdeps {
 							} else {
 								'└'
 							};
-							println!("{}    {}─── {:?}", edge, joint, dependency);
+							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dependency)?;
 						}
 					}
 				}
 			}
 			if !self.all_targets {
-				println!("Note: These dependencies might be used by other targets.");
+				writeln!(stdout, "Note: These dependencies might be used by other targets.")?;
 				if !self.lib
 					&& !self.bins
 					&& !self.examples
@@ -347,12 +353,12 @@ impl OptUdeps {
 					&& self.test.is_empty()
 					&& self.bench.is_empty()
 				{
-					println!("      To find dependencies that are not used by any target, enable `--all-targets`.");
+					writeln!(stdout, "      To find dependencies that are not used by any target, enable `--all-targets`.")?;
 				}
 			}
 			Ok(1)
 		} else {
-			println!("All deps seem to have been used.");
+			writeln!(stdout, "All deps seem to have been used.")?;
 			Ok(0)
 		}
 	}
