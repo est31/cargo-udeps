@@ -23,11 +23,12 @@ use structopt::clap::{AppSettings, ArgMatches};
 
 use crate::defs::CrateSaveAnalysis;
 
-pub fn run<I: IntoIterator<Item = OsString>>(args :I) -> CliResult {
+pub fn run<I: IntoIterator<Item = OsString>>(args :I, config :&mut Config) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
 	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
-	match opt.run(clap_matches.subcommand_matches("udeps").unwrap())? {
+	cargo::core::maybe_allow_nightly_features();
+	match opt.run(config, clap_matches.subcommand_matches("udeps").unwrap())? {
 		0 => Ok(()),
 		code => Err(CliError::code(code)),
 	}
@@ -198,9 +199,7 @@ struct OptUdeps {
 }
 
 impl OptUdeps {
-	fn run(&self, clap_matches :&ArgMatches) -> CargoResult<i32> {
-		cargo::core::maybe_allow_nightly_features();
-		let mut config = Config::default()?;
+	fn run(&self, config: &mut Config, clap_matches :&ArgMatches) -> CargoResult<i32> {
 		config.configure(
 			match self.verbose {
 				0 => 0,
@@ -215,9 +214,9 @@ impl OptUdeps {
 			&self.target_dir,
 			&[],
 		)?;
-		let ws = clap_matches.workspace(&config)?;
+		let ws = clap_matches.workspace(config)?;
 		let mode = CompileMode::Check { test : false };
-		let compile_opts = clap_matches.compile_options(&config, mode, Some(&ws))?;
+		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws))?;
 
 		let (packages, resolve) = cargo::ops::resolve_ws_precisely(
 			&ws,
@@ -235,13 +234,13 @@ impl OptUdeps {
 		let dependency_names = ws
 			.members()
 			.map(|from| {
-				let val = DependencyNames::new(from, &packages, &resolve, &mut ws.config().shell())?;
+				let val = DependencyNames::new(from, &packages, &resolve, &mut config.shell())?;
 				let key = from.package_id();
 				Ok((key, val))
 			})
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
-		let data = Arc::new(Mutex::new(ExecData::new(ws.config().shell().supports_color())));
+		let data = Arc::new(Mutex::new(ExecData::new(config.shell().supports_color())));
 		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
@@ -252,7 +251,7 @@ impl OptUdeps {
 		let mut build_dependencies = HashSet::new();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
-			let analysis = cmd_info.get_save_analysis(&mut ws.config().shell())?;
+			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
 				let (
