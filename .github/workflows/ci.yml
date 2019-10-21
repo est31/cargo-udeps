@@ -21,14 +21,19 @@ jobs:
           - nightly-x86_64-unknown-linux-gnu
         include:
           - toolchain: stable-x86_64-pc-windows-msvc
+            toolchain_nightly: nightly-2019-10-15-x86_64-pc-windows-msvc
             os: windows-2019
           - toolchain: stable-x86_64-apple-darwin
+            toolchain_nightly: nightly-2019-10-15-x86_64-apple-darwin
             os: macOS-10.14
           - toolchain: stable-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2019-10-15-x86_64-unknown-linux-gnu
             os: ubuntu-18.04
           - toolchain: beta-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2019-10-15-x86_64-unknown-linux-gnu
             os: ubuntu-18.04
           - toolchain: nightly-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2019-10-15-x86_64-unknown-linux-gnu
             os: ubuntu-18.04
 
     name: ${{ matrix.toolchain }}
@@ -43,14 +48,22 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf -o /tmp/rustup-init https://sh.rustup.rs
           bash /tmp/rustup-init -y --no-modify-path
+          ~/.cargo/bin/rustup install ${{ matrix.toolchain_nightly }}
           echo "::add-path::$HOME/.cargo/bin"
         if: matrix.toolchain == 'stable-x86_64-apple-darwin'
 
-      - name: rust-toolchain
+      - name: rust-toolchain ( ${{ matrix.toolchain }} )
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           default: true
+        if: matrix.toolchain != 'stable-x86_64-apple-darwin'
+
+      - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain_nightly }}
+          default: false
         if: matrix.toolchain != 'stable-x86_64-apple-darwin'
 
       - name: '`cargo build`'
@@ -64,6 +77,8 @@ jobs:
         with:
           command: test
           args: --verbose
+        env:
+          CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain_nightly }}
 
   release:
     strategy:
@@ -133,7 +148,7 @@ jobs:
         shell: bash
 
       - name: GH Release
-        uses: softprops/action-gh-release@v0.1.3
+        uses: softprops/action-gh-release@v1
         with:
           files: ${{ steps.asset.outputs.asset }}
         env:
