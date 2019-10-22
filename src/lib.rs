@@ -288,10 +288,11 @@ impl OptUdeps {
 					}
 				}
 				for (name, _) in &cmd_info.externs {
-					let dependency_name = by_extern_crate_name
-						.get(name)
-						.unwrap_or_else(|| panic!("could not find {:?}", name));
-					dependencies.insert((cmd_info.pkg, *dependency_name));
+					// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
+					// `Package` depend on.
+					if let Some(dependency_name) = by_extern_crate_name.get(name) {
+						dependencies.insert((cmd_info.pkg, *dependency_name));
+					}
 				}
 			}
 		}
@@ -586,15 +587,6 @@ impl DependencyNames {
 		}
 
 		let mut this = Self::default();
-
-		if let Some(lib) = from.targets().iter().find(|t| t.is_lib()) {
-			let name = resolve.extern_crate_name(from.package_id(), from.package_id(), lib)?;
-			this.normal_dev_by_extern_crate_name.insert(name.clone(), from.name());
-			this.normal_dev_by_lib_true_snakecased_name
-				.entry(name.clone())
-				.or_insert_with(HashSet::new)
-				.insert(from.name());
-		}
 
 		let from = from.package_id();
 
