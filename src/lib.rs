@@ -221,7 +221,15 @@ impl OptUdeps {
 			&[],
 		)?;
 		let ws = clap_matches.workspace(config)?;
-		let mode = CompileMode::Check { test : false };
+		let test = match self.profile.as_ref().map(Deref::deref) {
+			None => false,
+			Some("test") => true,
+			Some(profile) => return Err(failure::format_err!(
+				"unknown profile: `{}`, only `test` is currently supported",
+				profile,
+			)),
+		};
+		let mode = CompileMode::Check { test };
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws))?;
 
 		let (packages, resolve) = cargo::ops::resolve_ws_precisely(
