@@ -206,6 +206,17 @@ impl OptUdeps {
 		mut stdout :W,
 		clap_matches :&ArgMatches
 	) -> CargoResult<i32> {
+		if self.verbose > 0 {
+			let mut shell = config.shell();
+			shell.warn(
+				"currently verbose command informations (\"Running `..`\") are not correct.",
+			)?;
+			shell.warn("for example, `cargo-udeps` does these modifications:")?;
+			shell.warn("- changes `$CARGO` to the value given from `cargo`")?;
+			shell.warn("- sets `$RUST_CONFIG_SAVE_ANASYSIS` (for crates on the local filesystem)")?;
+			shell.warn("- adds `-Z save-analysis` (〃)")?;
+		}
+
 		config.configure(
 			match self.verbose {
 				0 => 0,
