@@ -11,6 +11,7 @@ use std::sync::Mutex;
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
+use cargo::core::resolver::ResolveOpts;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
@@ -243,11 +244,16 @@ impl OptUdeps {
 		let mode = CompileMode::Check { test };
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws))?;
 
-		let (packages, resolve) = cargo::ops::resolve_ws_precisely(
-			&ws,
+		let opts = ResolveOpts::new(
+			/*dev_deps*/ true,
 			&self.features,
 			self.all_features,
-			self.no_default_features,
+			!self.no_default_features,
+
+		);
+		let (packages, resolve) = cargo::ops::resolve_ws_with_opts(
+			&ws,
+			opts,
 			&Packages::All.to_package_id_specs(&ws)?,
 		)?;
 		let packages = packages
