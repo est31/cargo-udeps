@@ -8,6 +8,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::env;
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
@@ -276,7 +277,7 @@ impl OptUdeps {
 			})
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
-		let data = Arc::new(Mutex::new(ExecData::new(config.shell().supports_color())));
+		let data = Arc::new(Mutex::new(ExecData::new(config)?));
 		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
@@ -396,22 +397,33 @@ impl OptUdeps {
 }
 
 struct ExecData {
-	cargo_exe :Option<String>,
+	cargo_exe :OsString,
 	supports_color :bool,
 	relevant_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
-	fn new(supports_color :bool) -> Self {
-		let cargo_exe = which::which("cargo")
-			.map_err(|e| println!("warning: couldn't load cargo executable file: {:?}", e))
-			.ok()
-			.and_then(|p| p.to_str().map(str::to_owned));
-		Self {
+	fn new(config :&Config) -> CargoResult<Self> {
+		// `$CARGO` should be present when `cargo-udeps` is executed as `cargo udeps ..` or `cargo run -- udeps ..`.
+		let cargo_exe = env::var_os(cargo::CARGO_ENV)
+			.map(Ok::<_, failure::Error>)
+			.unwrap_or_else(|| {
+				// Unless otherwise specified, `$CARGO` is set to `config.cargo_exe()` for compilation commands which points at `cargo-udeps`.
+				let cargo_exe = config.cargo_exe()?;
+				config.shell().warn(format!(
+					"Couldn't find $CARGO environment variable. Setting it to {}",
+					cargo_exe.display(),
+				))?;
+				config.shell().warn(
+					"`cargo-udeps` currently does not support basic Cargo commands such as `build`",
+				)?;
+				Ok(cargo_exe.into())
+			})?;
+		Ok(Self {
 			cargo_exe,
-			supports_color,
+			supports_color :config.shell().supports_color(),
 			relevant_cmd_infos : Vec::new(),
-		}
+		})
 	}
 }
 
@@ -450,9 +462,7 @@ impl Executor for Exec {
 					id,
 				))?;
 			}
-			if let Some(cargo_exe) = &bt.cargo_exe {
-				cmd.env(cargo::CARGO_ENV, cargo_exe);
-			}
+			cmd.env(cargo::CARGO_ENV, &bt.cargo_exe);
 		}
 		if is_path {
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
