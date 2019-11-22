@@ -410,8 +410,13 @@ impl ExecData {
 			.unwrap_or_else(|| {
 				// Unless otherwise specified, `$CARGO` is set to `config.cargo_exe()` for compilation commands which points at `cargo-udeps`.
 				let cargo_exe = config.cargo_exe()?;
-				config.shell().warn(format!("$CARGO is set to {}", cargo_exe.display()))?;
-				config.shell().warn("`cargo-udeps` currently does not support basic Cargo commands such as `build`")?;
+				config.shell().warn(format!(
+					"Couldn't find $CARGO environment variable. Setting it to {}",
+					cargo_exe.display(),
+				))?;
+				config.shell().warn(
+					"`cargo-udeps` currently does not support basic Cargo commands such as `build`",
+				)?;
 				Ok(cargo_exe.into())
 			})?;
 		Ok(Self {
