@@ -53,13 +53,16 @@ which indicates which package should be built. If it is not given, then the
 current package is built. For more information on SPEC and its format, see the
 `cargo help pkgid` command.
 
-All packages in the workspace are checked if the `--all` flag is supplied. The
-`--all` flag is automatically assumed for a virtual manifest.
-Note that `--exclude` has to be specified in conjunction with the `--all` flag.
+All packages in the workspace are checked if the `--workspace` flag is supplied. The
+`--workspace` flag is automatically assumed for a virtual manifest.
+Note that `--exclude` has to be specified in conjunction with the `--workspace` flag.
 
 Compilation can be configured via the use of profiles which are configured in
 the manifest. The default profile for this command is `dev`, but passing
-the `--release` flag will use the `release` profile instead."
+the `--release` flag will use the `release` profile instead.
+
+The `--profile test` flag can be used to check unit tests with the
+`#[cfg(test)]` attribute."
 		)
     )]
 	Udeps(OptUdeps),
@@ -69,8 +72,10 @@ the `--release` flag will use the `release` profile instead."
 struct OptUdeps {
 	#[structopt(short, long, help("No output printed to stdout"))]
 	quiet: bool,
-	#[structopt(long, help("Check all packages in the workspace"))]
+	#[structopt(long, help("Alias for --workspace (deprecated)"))]
 	all: bool,
+	#[structopt(long, help("Check all packages in the workspace"))]
+	workspace: bool,
 	#[structopt(long, help("Check only the specified binary"))]
 	lib: bool,
 	#[structopt(long, help("Check all binaries"))]
