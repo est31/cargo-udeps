@@ -1,5 +1,13 @@
 # Changelog
 
+## Release 0.1.6 - December 2, 2019
+
+- Update cargo dependency to 0.40.0
+- Upgrade to Cargo.lock v2 format
+- Improved testsuite
+- Rust 2018 migration
+- Switch from travis CI to Github actions
+
 ## Release 0.1.5 - September 27, 2019
 
 - Downgrade the "same `lib` name" error to warning
