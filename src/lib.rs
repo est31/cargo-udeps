@@ -18,7 +18,7 @@ use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
 use cargo::core::{InternedString, Package, Resolve};
 use cargo::ops::Packages;
-use cargo::util::command_prelude::{ArgMatchesExt, CompileMode};
+use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use structopt::StructOpt;
@@ -248,7 +248,8 @@ impl OptUdeps {
 			)),
 		};
 		let mode = CompileMode::Check { test };
-		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws))?;
+		let pc = ProfileChecking::Unchecked;
+		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
 
 		let opts = ResolveOpts::new(
 			/*dev_deps*/ true,
@@ -257,13 +258,14 @@ impl OptUdeps {
 			!self.no_default_features,
 
 		);
-		let (packages, resolve) = cargo::ops::resolve_ws_with_opts(
+		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
 			opts,
 			&Packages::All.to_package_id_specs(&ws)?,
 		)?;
-		let packages = packages
-			.get_many(packages.package_ids())?
+
+		let packages = ws_resolve.pkg_set
+			.get_many(ws_resolve.pkg_set.package_ids())?
 			.into_iter()
 			.map(|p| (p.package_id(), p))
 			.collect::<HashMap<_, _>>();
@@ -271,7 +273,7 @@ impl OptUdeps {
 		let dependency_names = ws
 			.members()
 			.map(|from| {
-				let val = DependencyNames::new(from, &packages, &resolve, &mut config.shell())?;
+				let val = DependencyNames::new(from, &packages, &ws_resolve.targeted_resolve, &mut config.shell())?;
 				let key = from.package_id();
 				Ok((key, val))
 			})
