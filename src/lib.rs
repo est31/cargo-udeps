@@ -286,8 +286,14 @@ impl OptUdeps {
 
 		let mut used_normal_dev_dependencies = HashSet::new();
 		let mut used_build_dependencies = HashSet::new();
-		let mut normal_dev_dependencies = HashSet::new();
-		let mut build_dependencies = HashSet::new();
+		let mut normal_dev_dependencies = dependency_names
+			.iter()
+			.flat_map(|(&m, d)| d.normal_dev_non_lib.iter().map(move |&s| (m, s)))
+			.collect::<HashSet<_>>();
+		let mut build_dependencies = dependency_names
+			.iter()
+			.flat_map(|(&m, d)| d.build_non_lib.iter().map(move |&s| (m, s)))
+			.collect::<HashSet<_>>();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
@@ -350,6 +356,7 @@ impl OptUdeps {
 		}
 		if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
 			writeln!(stdout, "unused dependencies:")?;
+
 			for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
 				writeln!(stdout, "`{}`", member)?;
 				let (edge, joint) = if build_dependencies.is_empty() {
@@ -375,6 +382,7 @@ impl OptUdeps {
 					}
 				}
 			}
+
 			if !self.all_targets {
 				writeln!(stdout, "Note: These dependencies might be used by other targets.")?;
 				if !self.lib
@@ -390,9 +398,25 @@ impl OptUdeps {
 					writeln!(stdout, "      To find dependencies that are not used by any target, enable `--all-targets`.")?;
 				}
 			}
+
+			if dependency_names
+				.values()
+				.any(|d| !(d.normal_dev_non_lib.is_empty() && d.build_non_lib.is_empty()))
+			{
+				writeln!(stdout, "Note: Some dependencies are non-library packages.")?;
+				writeln!(stdout, "      `cargo-udeps` regards them as unused.")?;
+			}
+
+			writeln!(
+				stdout,
+				"Note: They might be false-positive.\n      \
+				 For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.",
+			)?;
+			stdout.flush()?;
 			Ok(1)
 		} else {
 			writeln!(stdout, "All deps seem to have been used.")?;
+			stdout.flush()?;
 			Ok(0)
 		}
 	}
@@ -607,8 +631,10 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 struct DependencyNames {
 	normal_dev_by_extern_crate_name :HashMap<String, InternedString>,
 	normal_dev_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+	normal_dev_non_lib :HashSet<InternedString>,
 	build_by_extern_crate_name :HashMap<String, InternedString>,
 	build_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+	build_non_lib :HashSet<InternedString>,
 }
 
 impl DependencyNames {
@@ -633,37 +659,48 @@ impl DependencyNames {
 		let from = from.package_id();
 
 		for (to_pkg, deps) in resolve.deps(from) {
-			let to_lib = packages
-				.get(&to_pkg)
-				.unwrap_or_else(|| panic!("could not find `{}`", &to_pkg))
+			let to_pkg = packages.get(&to_pkg).unwrap_or_else(|| panic!("could not find `{}`", to_pkg));
+
+			// Not all dependencies contain `lib` targets as it is OK to append non-library packages to `Cargo.toml`.
+			// Their `bin` targets can be built with `cargo build --bins -p <SPEC>` and are available in build scripts.
+			if let Some(to_lib) = to_pkg
 				.targets()
 				.iter()
 				.find(|t| t.is_lib())
-				.unwrap_or_else(|| panic!("`{}` does not have any `lib` target", to_pkg));
+			{
+				let extern_crate_name = resolve.extern_crate_name(from, to_pkg.package_id(), to_lib)?;
+				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
 
-			let extern_crate_name = resolve.extern_crate_name(from, to_pkg, to_lib)?;
-			let lib_true_snakecased_name = to_lib.name().replace('-', "_");
+				for dep in deps {
+					let (by_extern_crate_name, by_lib_true_snakecased_name) = if dep.is_build() {
+						(
+							&mut this.build_by_extern_crate_name,
+							&mut this.build_by_lib_true_snakecased_name,
+						)
+					} else {
+						(
+							&mut this.normal_dev_by_extern_crate_name,
+							&mut this.normal_dev_by_lib_true_snakecased_name,
+						)
+					};
 
-			for dep in deps {
-				let (by_extern_crate_name, by_lib_true_snakecased_name) = if dep.is_build() {
-					(
-						&mut this.build_by_extern_crate_name,
-						&mut this.build_by_lib_true_snakecased_name,
-					)
-				} else {
-					(
-						&mut this.normal_dev_by_extern_crate_name,
-						&mut this.normal_dev_by_lib_true_snakecased_name,
-					)
-				};
+					by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
 
-				by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
-
-				// Two `Dependenc`ies with the same name point at the same `Package`.
-				by_lib_true_snakecased_name
-					.entry(lib_true_snakecased_name.clone())
-					.or_insert_with(HashSet::new)
+					// Two `Dependenc`ies with the same name point at the same `Package`.
+					by_lib_true_snakecased_name
+						.entry(lib_true_snakecased_name.clone())
+						.or_insert_with(HashSet::new)
+						.insert(dep.name_in_toml());
+				}
+			} else {
+				for dep in deps {
+					if dep.is_build() {
+						&mut this.build_non_lib
+					} else {
+						&mut this.normal_dev_non_lib
+					}
 					.insert(dep.name_in_toml());
+				}
 			}
 		}
 
