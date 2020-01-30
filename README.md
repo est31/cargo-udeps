@@ -59,6 +59,7 @@ You are welcome to expand it:
 * https://github.com/kodegenix/kg-tree/commit/0270ec495887cf0ff7580155db4ff12664614ee8
 * https://github.com/opereon/opereon/commit/4d29cf174c0b178c1484f698ceb0e654f95a78d0
 * https://github.com/djg/audioipc-2/commit/de0fc58cf1e87079027fce06b50eeffa6ae23d54
+* https://github.com/casey/just/pull/587
 
 ### License
 [license]: #license
