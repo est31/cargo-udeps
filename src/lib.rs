@@ -41,7 +41,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 #[structopt(
 	about,
 	bin_name = "cargo",
-	global_setting(AppSettings::DeriveDisplayOrder),
+	global_settings(&[AppSettings::DeriveDisplayOrder, AppSettings::UnifiedHelpMessage]),
 )]
 enum Opt {
 	#[structopt(
@@ -73,41 +73,6 @@ The `--profile test` flag can be used to check unit tests with the
 struct OptUdeps {
 	#[structopt(short, long, help("No output printed to stdout"))]
 	quiet: bool,
-	#[structopt(long, help("Alias for --workspace (deprecated)"))]
-	all: bool,
-	#[structopt(long, help("Check all packages in the workspace"))]
-	workspace: bool,
-	#[structopt(long, help("Check only the specified binary"))]
-	lib: bool,
-	#[structopt(long, help("Check all binaries"))]
-	bins: bool,
-	#[structopt(long, help("Check all examples"))]
-	examples: bool,
-	#[structopt(long, help("Check all tests"))]
-	tests: bool,
-	#[structopt(long, help("Check all benches"))]
-	benches: bool,
-	#[structopt(long, help("Check all targets"))]
-	all_targets: bool,
-	#[structopt(long, help("Check artifacts in release mode, with optimizations"))]
-	release: bool,
-	#[structopt(long, help("Activate all available features"))]
-	all_features: bool,
-	#[structopt(long, help("Do not activate the `default` feature"))]
-	no_default_features: bool,
-	#[structopt(long, help("Require Cargo.lock and cache are up to date"))]
-	frozen: bool,
-	#[structopt(long, help("Require Cargo.lock is up to date"))]
-	locked: bool,
-	#[structopt(long, help("Run without accessing the network"))]
-	offline: bool,
-	#[structopt(
-		short,
-		long,
-		parse(from_occurrences),
-		help("Use verbose output (-vv very verbose/build.rs output)")
-	)]
-	verbose: u64,
 	#[structopt(
 		short,
 		long,
@@ -117,6 +82,10 @@ struct OptUdeps {
 		help("Package(s) to check")
 	)]
 	package: Vec<String>,
+	#[structopt(long, help("Alias for --workspace (deprecated)"))]
+	all: bool,
+	#[structopt(long, help("Check all packages in the workspace"))]
+	workspace: bool,
 	#[structopt(
 		long,
 		value_name("SPEC"),
@@ -132,22 +101,28 @@ struct OptUdeps {
 		help("Number of parallel jobs, defaults to # of CPUs")
 	)]
 	jobs: Option<String>,
+	#[structopt(long, help("Check only this package's library"))]
+	lib: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified bin target")
+		help("Check only the specified binary")
 	)]
 	bin: Vec<String>,
+	#[structopt(long, help("Check all binaries"))]
+	bins: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified example target")
+		help("Check only the specified example")
 	)]
 	example: Vec<String>,
+	#[structopt(long, help("Check all examples"))]
+	examples: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
@@ -156,6 +131,8 @@ struct OptUdeps {
 		help("Check only the specified test target")
 	)]
 	test: Vec<String>,
+	#[structopt(long, help("Check all tests"))]
+	tests: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
@@ -164,10 +141,16 @@ struct OptUdeps {
 		help("Check only the specified bench target")
 	)]
 	bench: Vec<String>,
+	#[structopt(long, help("Check all benches"))]
+	benches: bool,
+	#[structopt(long, help("Check all targets"))]
+	all_targets: bool,
+	#[structopt(long, help("Check artifacts in release mode, with optimizations"))]
+	release: bool,
 	#[structopt(
 		long,
-		value_name("PROFILE"),
-		help("Profile to build the selected target for")
+		value_name("PROFILE-NAME"),
+		help("Check artifacts with the specified profile")
 	)]
 	profile: Option<String>,
 	#[structopt(
@@ -177,6 +160,10 @@ struct OptUdeps {
 		help("Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
+	#[structopt(long, help("Activate all available features"))]
+	all_features: bool,
+	#[structopt(long, help("Do not activate the `default` feature"))]
+	no_default_features: bool,
 	#[structopt(long, value_name("TRIPLE"), help("Check for the target triple"))]
 	target: Option<String>,
 	#[structopt(
@@ -195,7 +182,14 @@ struct OptUdeps {
 		default_value("human"),
 		help("Error format")
 	)]
-	message_format: String,
+	message_format: Vec<String>,
+	#[structopt(
+		short,
+		long,
+		parse(from_occurrences),
+		help("Use verbose output (-vv very verbose/build.rs output)")
+	)]
+	verbose: u64,
 	#[structopt(
 		long,
 		value_name("WHEN"),
@@ -204,6 +198,12 @@ struct OptUdeps {
 		help("Coloring")
 	)]
 	color: Option<String>,
+	#[structopt(long, help("Require Cargo.lock and cache are up to date"))]
+	frozen: bool,
+	#[structopt(long, help("Require Cargo.lock is up to date"))]
+	locked: bool,
+	#[structopt(long, help("Run without accessing the network"))]
+	offline: bool,
 }
 
 impl OptUdeps {
