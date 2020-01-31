@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.7 - January 31, 2020
+
+- Update cargo dependency to 0.42.0
+- Don't assume that specified dependencies have lib targets
+
 ## Release 0.1.6 - December 2, 2019
 
 - Update cargo dependency to 0.40.0
