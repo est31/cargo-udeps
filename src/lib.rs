@@ -3,8 +3,8 @@ mod defs;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
-use std::io::Write;
-use std::ops::Deref;
+use std::io::{self, Write};
+use std::ops::{Deref, Index, IndexMut};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -16,7 +16,7 @@ use cargo::core::resolver::ResolveOpts;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::{InternedString, Package, Resolve};
+use cargo::core::{dependency, InternedString, Package, Resolve};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
@@ -210,7 +210,7 @@ impl OptUdeps {
 	fn run<W: Write>(
 		&self,
 		config :&mut Config,
-		mut stdout :W,
+		stdout :W,
 		clap_matches :&ArgMatches
 	) -> CargoResult<i32> {
 		if self.verbose > 0 {
@@ -286,105 +286,103 @@ impl OptUdeps {
 
 		let mut used_normal_dev_dependencies = HashSet::new();
 		let mut used_build_dependencies = HashSet::new();
-		let mut normal_dev_dependencies = dependency_names
+		let mut normal_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d.normal_dev_non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::Kind::Normal].non_lib.iter().map(move |&s| (m, s)))
+			.collect::<HashSet<_>>();
+		let mut dev_dependencies = dependency_names
+			.iter()
+			.flat_map(|(&m, d)| d[dependency::Kind::Development].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 		let mut build_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d.build_non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::Kind::Build].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
-				let (
-					by_extern_crate_name,
-					by_lib_true_snakecased_name,
-					used_dependencies,
-					dependencies
-				) = if cmd_info.custom_build {
-					(
-						&dependency_names.build_by_extern_crate_name,
-						&dependency_names.build_by_lib_true_snakecased_name,
-						&mut used_build_dependencies,
-						&mut build_dependencies,
-					)
-				} else {
-					(
-						&dependency_names.normal_dev_by_extern_crate_name,
-						&dependency_names.normal_dev_by_lib_true_snakecased_name,
-						&mut used_normal_dev_dependencies,
-						&mut normal_dev_dependencies,
-					)
-				};
-				for ext in &analysis.prelude.external_crates {
-					if let Some(dependency_names) = by_lib_true_snakecased_name.get(&ext.id.name) {
-						for dependency_name in dependency_names {
-							used_dependencies.insert((cmd_info.pkg, *dependency_name));
+				let collect_names = |
+					by_extern_crate_name: &HashMap<String, InternedString>,
+					by_lib_true_snakecased_name: &HashMap<String, HashSet<InternedString>>,
+					used_dependencies: &mut HashSet<(PackageId, InternedString)>,
+					dependencies: &mut HashSet<(PackageId, InternedString)>,
+				| {
+					for ext in &analysis.prelude.external_crates {
+						if let Some(dependency_names) = by_lib_true_snakecased_name.get(&*ext.id.name) {
+							for dependency_name in dependency_names {
+								used_dependencies.insert((cmd_info.pkg, *dependency_name));
+							}
 						}
 					}
-				}
-				for (name, _) in &cmd_info.externs {
-					// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
-					// `Package` depend on.
-					if let Some(dependency_name) = by_extern_crate_name.get(name) {
-						dependencies.insert((cmd_info.pkg, *dependency_name));
+
+					for (name, _) in &cmd_info.externs {
+						// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
+						// `Package` depend on.
+						if let Some(dependency_name) = by_extern_crate_name.get(&**name) {
+							dependencies.insert((cmd_info.pkg, *dependency_name));
+						}
 					}
-				}
+				};
+
+				collect_names(
+					&dependency_names.normal.by_extern_crate_name,
+					&dependency_names.normal.by_lib_true_snakecased_name,
+					&mut used_normal_dev_dependencies,
+					&mut normal_dependencies,
+				);
+				collect_names(
+					&dependency_names.development.by_extern_crate_name,
+					&dependency_names.development.by_lib_true_snakecased_name,
+					&mut used_normal_dev_dependencies,
+					&mut dev_dependencies,
+				);
+				collect_names(
+					&dependency_names.build.by_extern_crate_name,
+					&dependency_names.build.by_lib_true_snakecased_name,
+					&mut used_build_dependencies,
+					&mut build_dependencies,
+				);
 			}
 		}
 
-		let mut unused_dependencies = BTreeMap::new();
-		for (dependencies, used_dependencies, custom_build) in &[
-			(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
-			(&build_dependencies, &used_build_dependencies, true),
+		let mut outcome = Outcome::default();
+
+		for (dependencies, used_dependencies, kind) in &[
+			(&normal_dependencies, &used_normal_dev_dependencies, dependency::Kind::Normal),
+			(&dev_dependencies, &used_normal_dev_dependencies, dependency::Kind::Development),
+			(&build_dependencies, &used_build_dependencies, dependency::Kind::Build),
 		] {
-			for (id, dependency) in *dependencies {
-				if !used_dependencies.contains(&(*id, *dependency)) {
-					let (normal_dev, build) = unused_dependencies
+			for &(id, dependency) in *dependencies {
+				if !used_dependencies.contains(&(id, dependency)) {
+					let OutcomeUnusedDeps { normal, development, build, .. } = outcome
+						.unused_deps
 						.entry(id)
-						.or_insert_with(|| (BTreeSet::new(), BTreeSet::new()));
-					if *custom_build {
-						build.insert(dependency);
-					} else {
-						normal_dev.insert(dependency);
+						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?);
+					match kind {
+						dependency::Kind::Normal => normal,
+						dependency::Kind::Development => development,
+						dependency::Kind::Build => build,
 					}
+					.insert(dependency);
 				}
 			}
 		}
-		if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
-			writeln!(stdout, "unused dependencies:")?;
 
-			for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
-				writeln!(stdout, "`{}`", member)?;
-				let (edge, joint) = if build_dependencies.is_empty() {
-					(' ', '└')
-				} else {
-					('│', '├')
-				};
-				for (dependencies, edge, joint, prefix) in &[
-					(normal_dev_dependencies, edge, joint, "(dev-)"),
-					(build_dependencies, ' ', '└', "build-"),
-				] {
-					if !dependencies.is_empty() {
-						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
-						let mut dependencies = dependencies.iter().peekable();
-						while let Some(dependency) = dependencies.next() {
-							let joint = if dependencies.peek().is_some() {
-								'├'
-							} else {
-								'└'
-							};
-							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dependency)?;
-						}
-					}
-				}
-			}
+		outcome.success = outcome
+			.unused_deps
+			.values()
+			.all(|OutcomeUnusedDeps { normal, development, build, .. }| {
+				normal.is_empty() && development.is_empty() && build.is_empty()
+			});
+
+		if !outcome.success {
+			let mut warning = "".to_owned();
 
 			if !self.all_targets {
-				writeln!(stdout, "Note: These dependencies might be used by other targets.")?;
+				warning += "Note: These dependencies might be used by other targets.\n";
+
 				if !self.lib
 					&& !self.bins
 					&& !self.examples
@@ -395,30 +393,23 @@ impl OptUdeps {
 					&& self.test.is_empty()
 					&& self.bench.is_empty()
 				{
-					writeln!(stdout, "      To find dependencies that are not used by any target, enable `--all-targets`.")?;
+					warning += "      To find dependencies that are not used by any target, enable `--all-targets`.\n";
 				}
 			}
 
-			if dependency_names
-				.values()
-				.any(|d| !(d.normal_dev_non_lib.is_empty() && d.build_non_lib.is_empty()))
-			{
-				writeln!(stdout, "Note: Some dependencies are non-library packages.")?;
-				writeln!(stdout, "      `cargo-udeps` regards them as unused.")?;
+			if dependency_names.values().any(DependencyNames::has_non_lib) {
+				warning += "Note: Some dependencies are non-library packages.\n";
+				warning += "      `cargo-udeps` regards them as unused.\n";
 			}
 
-			writeln!(
-				stdout,
-				"Note: They might be false-positive.\n      \
-				 For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.",
-			)?;
-			stdout.flush()?;
-			Ok(1)
-		} else {
-			writeln!(stdout, "All deps seem to have been used.")?;
-			stdout.flush()?;
-			Ok(0)
+			warning += "Note: They might be false-positive.\n";
+			warning += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
+
+			outcome.warning = Some(warning);
 		}
+
+		outcome.print_human(stdout)?;
+		Ok(if outcome.success { 0 } else { 1 })
 	}
 }
 
@@ -629,12 +620,9 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 
 #[derive(Debug, Default)]
 struct DependencyNames {
-	normal_dev_by_extern_crate_name :HashMap<String, InternedString>,
-	normal_dev_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
-	normal_dev_non_lib :HashSet<InternedString>,
-	build_by_extern_crate_name :HashMap<String, InternedString>,
-	build_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
-	build_non_lib :HashSet<InternedString>,
+	normal: DependencyNamesValue,
+	development: DependencyNamesValue,
+	build: DependencyNamesValue,
 }
 
 impl DependencyNames {
@@ -644,16 +632,6 @@ impl DependencyNames {
 		resolve :&Resolve,
 		shell :&mut Shell,
 	) -> CargoResult<Self> {
-		fn ambiguous_names(
-			names :&HashMap<String, HashSet<InternedString>>,
-		) -> BTreeMap<InternedString, &str> {
-			names
-				.iter()
-				.filter(|(_, v)| v.len() > 1)
-				.flat_map(|(k, v)| v.iter().map(move |&v| (v, k.deref())))
-				.collect()
-		}
-
 		let mut this = Self::default();
 
 		let from = from.package_id();
@@ -672,40 +650,35 @@ impl DependencyNames {
 				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
 
 				for dep in deps {
-					let (by_extern_crate_name, by_lib_true_snakecased_name) = if dep.is_build() {
-						(
-							&mut this.build_by_extern_crate_name,
-							&mut this.build_by_lib_true_snakecased_name,
-						)
-					} else {
-						(
-							&mut this.normal_dev_by_extern_crate_name,
-							&mut this.normal_dev_by_lib_true_snakecased_name,
-						)
-					};
-
-					by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+					let names = &mut this[dep.kind()];
+					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
 
 					// Two `Dependenc`ies with the same name point at the same `Package`.
-					by_lib_true_snakecased_name
+					names
+						.by_lib_true_snakecased_name
 						.entry(lib_true_snakecased_name.clone())
 						.or_insert_with(HashSet::new)
 						.insert(dep.name_in_toml());
 				}
 			} else {
 				for dep in deps {
-					if dep.is_build() {
-						&mut this.build_non_lib
-					} else {
-						&mut this.normal_dev_non_lib
-					}
-					.insert(dep.name_in_toml());
+					this[dep.kind()].non_lib.insert(dep.name_in_toml());
 				}
 			}
 		}
 
-		let ambiguous_normal_dev = ambiguous_names(&this.normal_dev_by_lib_true_snakecased_name);
-		let ambiguous_build = ambiguous_names(&this.build_by_lib_true_snakecased_name);
+		let ambiguous_names = |kinds: &[dependency::Kind]| -> BTreeMap<_, _> {
+			kinds
+				.iter()
+				.flat_map(|&k| &this[k].by_lib_true_snakecased_name)
+				.filter(|(_, v)| v.len() > 1)
+				.flat_map(|(k, v)| v.iter().map(move |&v| (v, k.deref())))
+				.collect()
+		};
+
+		let ambiguous_normal_dev =
+			ambiguous_names(&[dependency::Kind::Normal, dependency::Kind::Development]);
+		let ambiguous_build = ambiguous_names(&[dependency::Kind::Build]);
 
 		if !(ambiguous_normal_dev.is_empty() && ambiguous_build.is_empty()) {
 			let mut msg = format!(
@@ -739,5 +712,117 @@ impl DependencyNames {
 		}
 
 		Ok(this)
+	}
+
+	fn has_non_lib(&self) -> bool {
+		[dependency::Kind::Normal, dependency::Kind::Development, dependency::Kind::Build]
+			.iter()
+			.any(|&k| !self[k].non_lib.is_empty())
+	}
+}
+
+impl Index<dependency::Kind> for DependencyNames {
+	type Output = DependencyNamesValue;
+
+	fn index(&self, index: dependency::Kind) -> &DependencyNamesValue {
+		match index {
+			dependency::Kind::Normal => &self.normal,
+			dependency::Kind::Development => &self.development,
+			dependency::Kind::Build => &self.build,
+		}
+	}
+}
+
+impl IndexMut<dependency::Kind> for DependencyNames {
+	fn index_mut(&mut self, index: dependency::Kind) -> &mut DependencyNamesValue {
+		match index {
+			dependency::Kind::Normal => &mut self.normal,
+			dependency::Kind::Development => &mut self.development,
+			dependency::Kind::Build => &mut self.build,
+		}
+	}
+}
+
+#[derive(Debug, Default)]
+struct DependencyNamesValue {
+	by_extern_crate_name :HashMap<String, InternedString>,
+	by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+	non_lib :HashSet<InternedString>,
+}
+
+#[derive(Default, Debug)]
+struct Outcome {
+	success: bool,
+	unused_deps: BTreeMap<PackageId, OutcomeUnusedDeps>,
+	warning: Option<String>,
+}
+
+impl Outcome {
+	fn print_human(&self, mut stdout: impl Write) -> io::Result<()> {
+		if self.success {
+			writeln!(stdout, "All deps seem to have been used.")?;
+		} else {
+			writeln!(stdout, "unused dependencies:")?;
+
+			for (member, OutcomeUnusedDeps { normal, development, build, .. }) in &self.unused_deps {
+				fn edge_and_joint(p: bool) -> (char, char) {
+					if p {
+						(' ', '└')
+					} else {
+						('│', '├')
+					}
+				}
+
+				writeln!(stdout, "`{}`", member)?;
+
+				for (deps, (edge, joint), prefix) in &[
+					(normal, edge_and_joint(development.is_empty() && build.is_empty()), ""),
+					(development, edge_and_joint(build.is_empty()), "dev-"),
+					(build, (' ', '└'), "build-"),
+				] {
+					if !deps.is_empty() {
+						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
+						let mut deps = deps.iter().peekable();
+						while let Some(dep) = deps.next() {
+							let joint = if deps.peek().is_some() {
+								'├'
+							} else {
+								'└'
+							};
+							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dep)?;
+						}
+					}
+				}
+			}
+
+			if let Some(warning) = &self.warning {
+				write!(stdout, "{}", warning)?;
+			}
+		}
+		stdout.flush()
+	}
+}
+
+#[derive(Debug)]
+struct OutcomeUnusedDeps {
+	manifest_path: String,
+	normal: BTreeSet<InternedString>,
+	development: BTreeSet<InternedString>,
+	build: BTreeSet<InternedString>,
+}
+
+impl OutcomeUnusedDeps {
+	fn new(manifest_path: &Path) -> CargoResult<Self> {
+		let manifest_path = manifest_path
+			.to_str()
+			.ok_or_else(|| failure::format_err!("{:?} is not valid utf-8", manifest_path))?
+			.to_owned();
+
+		Ok(Self {
+			manifest_path,
+			normal: BTreeSet::new(),
+			development: BTreeSet::new(),
+			build: BTreeSet::new(),
+		})
 	}
 }
