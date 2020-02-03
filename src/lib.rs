@@ -1,14 +1,15 @@
 mod defs;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::io::{self, Write};
 use std::ops::{Deref, Index, IndexMut};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::env;
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
@@ -21,6 +22,7 @@ use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
+use serde::Serialize;
 use structopt::StructOpt;
 use structopt::clap::{AppSettings, ArgMatches};
 
@@ -65,13 +67,13 @@ the `--release` flag will use the `release` profile instead.
 The `--profile test` flag can be used to check unit tests with the
 `#[cfg(test)]` attribute."
 		)
-    )]
+	)]
 	Udeps(OptUdeps),
 }
 
 #[derive(StructOpt, Debug)]
 struct OptUdeps {
-	#[structopt(short, long, help("No output printed to stdout"))]
+	#[structopt(short, long, help("[cargo] No output printed to stdout"))]
 	quiet: bool,
 	#[structopt(
 		short,
@@ -79,100 +81,100 @@ struct OptUdeps {
 		value_name("SPEC"),
 		min_values(1),
 		number_of_values(1),
-		help("Package(s) to check")
+		help("[cargo] Package(s) to check")
 	)]
 	package: Vec<String>,
-	#[structopt(long, help("Alias for --workspace (deprecated)"))]
+	#[structopt(long, help("[cargo] Alias for --workspace (deprecated)"))]
 	all: bool,
-	#[structopt(long, help("Check all packages in the workspace"))]
+	#[structopt(long, help("[cargo] Check all packages in the workspace"))]
 	workspace: bool,
 	#[structopt(
 		long,
 		value_name("SPEC"),
 		min_values(1),
 		number_of_values(1),
-		help("Exclude packages from the check")
+		help("[cargo] Exclude packages from the check")
 	)]
 	exclude: Vec<String>,
 	#[structopt(
 		short,
 		long,
 		value_name("N"),
-		help("Number of parallel jobs, defaults to # of CPUs")
+		help("[cargo] Number of parallel jobs, defaults to # of CPUs")
 	)]
 	jobs: Option<String>,
-	#[structopt(long, help("Check only this package's library"))]
+	#[structopt(long, help("[cargo] Check only this package's library"))]
 	lib: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified binary")
+		help("[cargo] Check only the specified binary")
 	)]
 	bin: Vec<String>,
-	#[structopt(long, help("Check all binaries"))]
+	#[structopt(long, help("[cargo] Check all binaries"))]
 	bins: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified example")
+		help("[cargo] Check only the specified example")
 	)]
 	example: Vec<String>,
-	#[structopt(long, help("Check all examples"))]
+	#[structopt(long, help("[cargo] Check all examples"))]
 	examples: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified test target")
+		help("[cargo] Check only the specified test target")
 	)]
 	test: Vec<String>,
-	#[structopt(long, help("Check all tests"))]
+	#[structopt(long, help("[cargo] Check all tests"))]
 	tests: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified bench target")
+		help("[cargo] Check only the specified bench target")
 	)]
 	bench: Vec<String>,
-	#[structopt(long, help("Check all benches"))]
+	#[structopt(long, help("[cargo] Check all benches"))]
 	benches: bool,
-	#[structopt(long, help("Check all targets"))]
+	#[structopt(long, help("[cargo] Check all targets"))]
 	all_targets: bool,
-	#[structopt(long, help("Check artifacts in release mode, with optimizations"))]
+	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"))]
 	release: bool,
 	#[structopt(
 		long,
 		value_name("PROFILE-NAME"),
-		help("Check artifacts with the specified profile")
+		help("[cargo] Check artifacts with the specified profile")
 	)]
 	profile: Option<String>,
 	#[structopt(
 		long,
 		value_name("FEATURES"),
 		min_values(1),
-		help("Space-separated list of features to activate")
+		help("[cargo] Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
-	#[structopt(long, help("Activate all available features"))]
+	#[structopt(long, help("[cargo] Activate all available features"))]
 	all_features: bool,
-	#[structopt(long, help("Do not activate the `default` feature"))]
+	#[structopt(long, help("[cargo] Do not activate the `default` feature"))]
 	no_default_features: bool,
-	#[structopt(long, value_name("TRIPLE"), help("Check for the target triple"))]
+	#[structopt(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
 	target: Option<String>,
 	#[structopt(
 		long,
 		value_name("DIRECTORY"),
-		help("Directory for all generated artifacts")
+		help("[cargo] Directory for all generated artifacts")
 	)]
 	target_dir: Option<PathBuf>,
-	#[structopt(long, value_name("PATH"), help("Path to Cargo.toml"))]
+	#[structopt(long, value_name("PATH"), help("[cargo] Path to Cargo.toml"))]
 	manifest_path: Option<PathBuf>,
 	#[structopt(
 		long,
@@ -180,14 +182,14 @@ struct OptUdeps {
 		case_insensitive(true),
 		possible_values(&["human", "json", "short"]),
 		default_value("human"),
-		help("Error format")
+		help("[cargo] Error format")
 	)]
 	message_format: Vec<String>,
 	#[structopt(
 		short,
 		long,
 		parse(from_occurrences),
-		help("Use verbose output (-vv very verbose/build.rs output)")
+		help("[cargo] Use verbose output (-vv very verbose/build.rs output)")
 	)]
 	verbose: u64,
 	#[structopt(
@@ -195,15 +197,23 @@ struct OptUdeps {
 		value_name("WHEN"),
 		case_insensitive(false),
 		possible_values(&["auto", "always", "never"]),
-		help("Coloring")
+		help("[cargo] Coloring")
 	)]
 	color: Option<String>,
-	#[structopt(long, help("Require Cargo.lock and cache are up to date"))]
+	#[structopt(long, help("[cargo] Require Cargo.lock and cache are up to date"))]
 	frozen: bool,
-	#[structopt(long, help("Require Cargo.lock is up to date"))]
+	#[structopt(long, help("[cargo] Require Cargo.lock is up to date"))]
 	locked: bool,
-	#[structopt(long, help("Run without accessing the network"))]
+	#[structopt(long, help("[cargo] Run without accessing the network"))]
 	offline: bool,
+	#[structopt(
+		long,
+		value_name("OUTPUT"),
+		default_value("human"),
+		possible_values(OutputKind::VARIANTS),
+		help("Output format"))
+	]
+	output: OutputKind,
 }
 
 impl OptUdeps {
@@ -378,10 +388,10 @@ impl OptUdeps {
 			});
 
 		if !outcome.success {
-			let mut warning = "".to_owned();
+			let mut note = "".to_owned();
 
 			if !self.all_targets {
-				warning += "Note: These dependencies might be used by other targets.\n";
+				note += "Note: These dependencies might be used by other targets.\n";
 
 				if !self.lib
 					&& !self.bins
@@ -393,22 +403,22 @@ impl OptUdeps {
 					&& self.test.is_empty()
 					&& self.bench.is_empty()
 				{
-					warning += "      To find dependencies that are not used by any target, enable `--all-targets`.\n";
+					note += "      To find dependencies that are not used by any target, enable `--all-targets`.\n";
 				}
 			}
 
 			if dependency_names.values().any(DependencyNames::has_non_lib) {
-				warning += "Note: Some dependencies are non-library packages.\n";
-				warning += "      `cargo-udeps` regards them as unused.\n";
+				note += "Note: Some dependencies are non-library packages.\n";
+				note += "      `cargo-udeps` regards them as unused.\n";
 			}
 
-			warning += "Note: They might be false-positive.\n";
-			warning += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
+			note += "Note: They might be false-positive.\n";
+			note += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
 
-			outcome.warning = Some(warning);
+			outcome.note = Some(note);
 		}
 
-		outcome.print_human(stdout)?;
+		outcome.print(self.output, stdout)?;
 		Ok(if outcome.success { 0 } else { 1 })
 	}
 }
@@ -750,14 +760,21 @@ struct DependencyNamesValue {
 	non_lib :HashSet<InternedString>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 struct Outcome {
 	success: bool,
 	unused_deps: BTreeMap<PackageId, OutcomeUnusedDeps>,
-	warning: Option<String>,
+	note: Option<String>,
 }
 
 impl Outcome {
+	fn print(&self, output: OutputKind, stdout: impl Write) -> io::Result<()> {
+		match output {
+			OutputKind::Human => self.print_human(stdout),
+			OutputKind::Json => self.print_json(stdout),
+		}
+	}
+
 	fn print_human(&self, mut stdout: impl Write) -> io::Result<()> {
 		if self.success {
 			writeln!(stdout, "All deps seem to have been used.")?;
@@ -795,15 +812,21 @@ impl Outcome {
 				}
 			}
 
-			if let Some(warning) = &self.warning {
-				write!(stdout, "{}", warning)?;
+			if let Some(note) = &self.note {
+				write!(stdout, "{}", note)?;
 			}
 		}
 		stdout.flush()
 	}
+
+	fn print_json(&self, mut stdout: impl Write) -> io::Result<()> {
+		let json = serde_json::to_string(self).expect("should not fail");
+		writeln!(stdout, "{}", json)?;
+		stdout.flush()
+	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct OutcomeUnusedDeps {
 	manifest_path: String,
 	normal: BTreeSet<InternedString>,
@@ -824,5 +847,27 @@ impl OutcomeUnusedDeps {
 			development: BTreeSet::new(),
 			build: BTreeSet::new(),
 		})
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+enum OutputKind {
+	Human,
+	Json,
+}
+
+impl OutputKind {
+	const VARIANTS: &'static [&'static str] = &["human", "json"];
+}
+
+impl FromStr for OutputKind {
+	type Err = &'static str;
+
+	fn from_str(s: &str) -> std::result::Result<Self, &'static str> {
+		match s {
+			"human" => Ok(Self::Human),
+			"json" => Ok(Self::Json),
+			_ => Err(r#"expected "human" or "json" (you should not see this message)"#),
+		}
 	}
 }
