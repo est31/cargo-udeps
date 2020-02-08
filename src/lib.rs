@@ -1,14 +1,15 @@
 mod defs;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
-use std::io::Write;
-use std::ops::Deref;
+use std::io::{self, Write};
+use std::ops::{Deref, Index, IndexMut};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::env;
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
@@ -16,11 +17,12 @@ use cargo::core::resolver::ResolveOpts;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::{InternedString, Package, Resolve};
+use cargo::core::{dependency, InternedString, Package, Resolve};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
+use serde::Serialize;
 use structopt::StructOpt;
 use structopt::clap::{AppSettings, ArgMatches};
 
@@ -41,7 +43,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 #[structopt(
 	about,
 	bin_name = "cargo",
-	global_setting(AppSettings::DeriveDisplayOrder),
+	global_settings(&[AppSettings::DeriveDisplayOrder, AppSettings::UnifiedHelpMessage]),
 )]
 enum Opt {
 	#[structopt(
@@ -65,127 +67,114 @@ the `--release` flag will use the `release` profile instead.
 The `--profile test` flag can be used to check unit tests with the
 `#[cfg(test)]` attribute."
 		)
-    )]
+	)]
 	Udeps(OptUdeps),
 }
 
 #[derive(StructOpt, Debug)]
 struct OptUdeps {
-	#[structopt(short, long, help("No output printed to stdout"))]
+	#[structopt(short, long, help("[cargo] No output printed to stdout"))]
 	quiet: bool,
-	#[structopt(long, help("Alias for --workspace (deprecated)"))]
-	all: bool,
-	#[structopt(long, help("Check all packages in the workspace"))]
-	workspace: bool,
-	#[structopt(long, help("Check only the specified binary"))]
-	lib: bool,
-	#[structopt(long, help("Check all binaries"))]
-	bins: bool,
-	#[structopt(long, help("Check all examples"))]
-	examples: bool,
-	#[structopt(long, help("Check all tests"))]
-	tests: bool,
-	#[structopt(long, help("Check all benches"))]
-	benches: bool,
-	#[structopt(long, help("Check all targets"))]
-	all_targets: bool,
-	#[structopt(long, help("Check artifacts in release mode, with optimizations"))]
-	release: bool,
-	#[structopt(long, help("Activate all available features"))]
-	all_features: bool,
-	#[structopt(long, help("Do not activate the `default` feature"))]
-	no_default_features: bool,
-	#[structopt(long, help("Require Cargo.lock and cache are up to date"))]
-	frozen: bool,
-	#[structopt(long, help("Require Cargo.lock is up to date"))]
-	locked: bool,
-	#[structopt(long, help("Run without accessing the network"))]
-	offline: bool,
-	#[structopt(
-		short,
-		long,
-		parse(from_occurrences),
-		help("Use verbose output (-vv very verbose/build.rs output)")
-	)]
-	verbose: u64,
 	#[structopt(
 		short,
 		long,
 		value_name("SPEC"),
 		min_values(1),
 		number_of_values(1),
-		help("Package(s) to check")
+		help("[cargo] Package(s) to check")
 	)]
 	package: Vec<String>,
+	#[structopt(long, help("[cargo] Alias for --workspace (deprecated)"))]
+	all: bool,
+	#[structopt(long, help("[cargo] Check all packages in the workspace"))]
+	workspace: bool,
 	#[structopt(
 		long,
 		value_name("SPEC"),
 		min_values(1),
 		number_of_values(1),
-		help("Exclude packages from the check")
+		help("[cargo] Exclude packages from the check")
 	)]
 	exclude: Vec<String>,
 	#[structopt(
 		short,
 		long,
 		value_name("N"),
-		help("Number of parallel jobs, defaults to # of CPUs")
+		help("[cargo] Number of parallel jobs, defaults to # of CPUs")
 	)]
 	jobs: Option<String>,
+	#[structopt(long, help("[cargo] Check only this package's library"))]
+	lib: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified bin target")
+		help("[cargo] Check only the specified binary")
 	)]
 	bin: Vec<String>,
+	#[structopt(long, help("[cargo] Check all binaries"))]
+	bins: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified example target")
+		help("[cargo] Check only the specified example")
 	)]
 	example: Vec<String>,
+	#[structopt(long, help("[cargo] Check all examples"))]
+	examples: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified test target")
+		help("[cargo] Check only the specified test target")
 	)]
 	test: Vec<String>,
+	#[structopt(long, help("[cargo] Check all tests"))]
+	tests: bool,
 	#[structopt(
 		long,
 		value_name("NAME"),
 		min_values(0),
 		number_of_values(1),
-		help("Check only the specified bench target")
+		help("[cargo] Check only the specified bench target")
 	)]
 	bench: Vec<String>,
+	#[structopt(long, help("[cargo] Check all benches"))]
+	benches: bool,
+	#[structopt(long, help("[cargo] Check all targets"))]
+	all_targets: bool,
+	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"))]
+	release: bool,
 	#[structopt(
 		long,
-		value_name("PROFILE"),
-		help("Profile to build the selected target for")
+		value_name("PROFILE-NAME"),
+		help("[cargo] Check artifacts with the specified profile")
 	)]
 	profile: Option<String>,
 	#[structopt(
 		long,
 		value_name("FEATURES"),
 		min_values(1),
-		help("Space-separated list of features to activate")
+		help("[cargo] Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
-	#[structopt(long, value_name("TRIPLE"), help("Check for the target triple"))]
+	#[structopt(long, help("[cargo] Activate all available features"))]
+	all_features: bool,
+	#[structopt(long, help("[cargo] Do not activate the `default` feature"))]
+	no_default_features: bool,
+	#[structopt(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
 	target: Option<String>,
 	#[structopt(
 		long,
 		value_name("DIRECTORY"),
-		help("Directory for all generated artifacts")
+		help("[cargo] Directory for all generated artifacts")
 	)]
 	target_dir: Option<PathBuf>,
-	#[structopt(long, value_name("PATH"), help("Path to Cargo.toml"))]
+	#[structopt(long, value_name("PATH"), help("[cargo] Path to Cargo.toml"))]
 	manifest_path: Option<PathBuf>,
 	#[structopt(
 		long,
@@ -193,24 +182,45 @@ struct OptUdeps {
 		case_insensitive(true),
 		possible_values(&["human", "json", "short"]),
 		default_value("human"),
-		help("Error format")
+		help("[cargo] Error format")
 	)]
-	message_format: String,
+	message_format: Vec<String>,
+	#[structopt(
+		short,
+		long,
+		parse(from_occurrences),
+		help("[cargo] Use verbose output (-vv very verbose/build.rs output)")
+	)]
+	verbose: u64,
 	#[structopt(
 		long,
 		value_name("WHEN"),
 		case_insensitive(false),
 		possible_values(&["auto", "always", "never"]),
-		help("Coloring")
+		help("[cargo] Coloring")
 	)]
 	color: Option<String>,
+	#[structopt(long, help("[cargo] Require Cargo.lock and cache are up to date"))]
+	frozen: bool,
+	#[structopt(long, help("[cargo] Require Cargo.lock is up to date"))]
+	locked: bool,
+	#[structopt(long, help("[cargo] Run without accessing the network"))]
+	offline: bool,
+	#[structopt(
+		long,
+		value_name("OUTPUT"),
+		default_value("human"),
+		possible_values(OutputKind::VARIANTS),
+		help("Output format"))
+	]
+	output: OutputKind,
 }
 
 impl OptUdeps {
 	fn run<W: Write>(
 		&self,
 		config :&mut Config,
-		mut stdout :W,
+		stdout :W,
 		clap_matches :&ArgMatches
 	) -> CargoResult<i32> {
 		if self.verbose > 0 {
@@ -286,105 +296,103 @@ impl OptUdeps {
 
 		let mut used_normal_dev_dependencies = HashSet::new();
 		let mut used_build_dependencies = HashSet::new();
-		let mut normal_dev_dependencies = dependency_names
+		let mut normal_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d.normal_dev_non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::Kind::Normal].non_lib.iter().map(move |&s| (m, s)))
+			.collect::<HashSet<_>>();
+		let mut dev_dependencies = dependency_names
+			.iter()
+			.flat_map(|(&m, d)| d[dependency::Kind::Development].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 		let mut build_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d.build_non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::Kind::Build].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
-				let (
-					by_extern_crate_name,
-					by_lib_true_snakecased_name,
-					used_dependencies,
-					dependencies
-				) = if cmd_info.custom_build {
-					(
-						&dependency_names.build_by_extern_crate_name,
-						&dependency_names.build_by_lib_true_snakecased_name,
-						&mut used_build_dependencies,
-						&mut build_dependencies,
-					)
-				} else {
-					(
-						&dependency_names.normal_dev_by_extern_crate_name,
-						&dependency_names.normal_dev_by_lib_true_snakecased_name,
-						&mut used_normal_dev_dependencies,
-						&mut normal_dev_dependencies,
-					)
-				};
-				for ext in &analysis.prelude.external_crates {
-					if let Some(dependency_names) = by_lib_true_snakecased_name.get(&ext.id.name) {
-						for dependency_name in dependency_names {
-							used_dependencies.insert((cmd_info.pkg, *dependency_name));
+				let collect_names = |
+					by_extern_crate_name: &HashMap<String, InternedString>,
+					by_lib_true_snakecased_name: &HashMap<String, HashSet<InternedString>>,
+					used_dependencies: &mut HashSet<(PackageId, InternedString)>,
+					dependencies: &mut HashSet<(PackageId, InternedString)>,
+				| {
+					for ext in &analysis.prelude.external_crates {
+						if let Some(dependency_names) = by_lib_true_snakecased_name.get(&*ext.id.name) {
+							for dependency_name in dependency_names {
+								used_dependencies.insert((cmd_info.pkg, *dependency_name));
+							}
 						}
 					}
-				}
-				for (name, _) in &cmd_info.externs {
-					// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
-					// `Package` depend on.
-					if let Some(dependency_name) = by_extern_crate_name.get(name) {
-						dependencies.insert((cmd_info.pkg, *dependency_name));
+
+					for (name, _) in &cmd_info.externs {
+						// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
+						// `Package` depend on.
+						if let Some(dependency_name) = by_extern_crate_name.get(&**name) {
+							dependencies.insert((cmd_info.pkg, *dependency_name));
+						}
 					}
-				}
+				};
+
+				collect_names(
+					&dependency_names.normal.by_extern_crate_name,
+					&dependency_names.normal.by_lib_true_snakecased_name,
+					&mut used_normal_dev_dependencies,
+					&mut normal_dependencies,
+				);
+				collect_names(
+					&dependency_names.development.by_extern_crate_name,
+					&dependency_names.development.by_lib_true_snakecased_name,
+					&mut used_normal_dev_dependencies,
+					&mut dev_dependencies,
+				);
+				collect_names(
+					&dependency_names.build.by_extern_crate_name,
+					&dependency_names.build.by_lib_true_snakecased_name,
+					&mut used_build_dependencies,
+					&mut build_dependencies,
+				);
 			}
 		}
 
-		let mut unused_dependencies = BTreeMap::new();
-		for (dependencies, used_dependencies, custom_build) in &[
-			(&normal_dev_dependencies, &used_normal_dev_dependencies, false),
-			(&build_dependencies, &used_build_dependencies, true),
+		let mut outcome = Outcome::default();
+
+		for (dependencies, used_dependencies, kind) in &[
+			(&normal_dependencies, &used_normal_dev_dependencies, dependency::Kind::Normal),
+			(&dev_dependencies, &used_normal_dev_dependencies, dependency::Kind::Development),
+			(&build_dependencies, &used_build_dependencies, dependency::Kind::Build),
 		] {
-			for (id, dependency) in *dependencies {
-				if !used_dependencies.contains(&(*id, *dependency)) {
-					let (normal_dev, build) = unused_dependencies
+			for &(id, dependency) in *dependencies {
+				if !used_dependencies.contains(&(id, dependency)) {
+					let OutcomeUnusedDeps { normal, development, build, .. } = outcome
+						.unused_deps
 						.entry(id)
-						.or_insert_with(|| (BTreeSet::new(), BTreeSet::new()));
-					if *custom_build {
-						build.insert(dependency);
-					} else {
-						normal_dev.insert(dependency);
+						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?);
+					match kind {
+						dependency::Kind::Normal => normal,
+						dependency::Kind::Development => development,
+						dependency::Kind::Build => build,
 					}
+					.insert(dependency);
 				}
 			}
 		}
-		if !unused_dependencies.values().all(|(ps1, ps2)| ps1.is_empty() && ps2.is_empty()) {
-			writeln!(stdout, "unused dependencies:")?;
 
-			for (member, (normal_dev_dependencies, build_dependencies)) in unused_dependencies {
-				writeln!(stdout, "`{}`", member)?;
-				let (edge, joint) = if build_dependencies.is_empty() {
-					(' ', '└')
-				} else {
-					('│', '├')
-				};
-				for (dependencies, edge, joint, prefix) in &[
-					(normal_dev_dependencies, edge, joint, "(dev-)"),
-					(build_dependencies, ' ', '└', "build-"),
-				] {
-					if !dependencies.is_empty() {
-						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
-						let mut dependencies = dependencies.iter().peekable();
-						while let Some(dependency) = dependencies.next() {
-							let joint = if dependencies.peek().is_some() {
-								'├'
-							} else {
-								'└'
-							};
-							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dependency)?;
-						}
-					}
-				}
-			}
+		outcome.success = outcome
+			.unused_deps
+			.values()
+			.all(|OutcomeUnusedDeps { normal, development, build, .. }| {
+				normal.is_empty() && development.is_empty() && build.is_empty()
+			});
+
+		if !outcome.success {
+			let mut note = "".to_owned();
 
 			if !self.all_targets {
-				writeln!(stdout, "Note: These dependencies might be used by other targets.")?;
+				note += "Note: These dependencies might be used by other targets.\n";
+
 				if !self.lib
 					&& !self.bins
 					&& !self.examples
@@ -395,30 +403,23 @@ impl OptUdeps {
 					&& self.test.is_empty()
 					&& self.bench.is_empty()
 				{
-					writeln!(stdout, "      To find dependencies that are not used by any target, enable `--all-targets`.")?;
+					note += "      To find dependencies that are not used by any target, enable `--all-targets`.\n";
 				}
 			}
 
-			if dependency_names
-				.values()
-				.any(|d| !(d.normal_dev_non_lib.is_empty() && d.build_non_lib.is_empty()))
-			{
-				writeln!(stdout, "Note: Some dependencies are non-library packages.")?;
-				writeln!(stdout, "      `cargo-udeps` regards them as unused.")?;
+			if dependency_names.values().any(DependencyNames::has_non_lib) {
+				note += "Note: Some dependencies are non-library packages.\n";
+				note += "      `cargo-udeps` regards them as unused.\n";
 			}
 
-			writeln!(
-				stdout,
-				"Note: They might be false-positive.\n      \
-				 For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.",
-			)?;
-			stdout.flush()?;
-			Ok(1)
-		} else {
-			writeln!(stdout, "All deps seem to have been used.")?;
-			stdout.flush()?;
-			Ok(0)
+			note += "Note: They might be false-positive.\n";
+			note += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
+
+			outcome.note = Some(note);
 		}
+
+		outcome.print(self.output, stdout)?;
+		Ok(if outcome.success { 0 } else { 1 })
 	}
 }
 
@@ -629,12 +630,9 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 
 #[derive(Debug, Default)]
 struct DependencyNames {
-	normal_dev_by_extern_crate_name :HashMap<String, InternedString>,
-	normal_dev_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
-	normal_dev_non_lib :HashSet<InternedString>,
-	build_by_extern_crate_name :HashMap<String, InternedString>,
-	build_by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
-	build_non_lib :HashSet<InternedString>,
+	normal: DependencyNamesValue,
+	development: DependencyNamesValue,
+	build: DependencyNamesValue,
 }
 
 impl DependencyNames {
@@ -644,16 +642,6 @@ impl DependencyNames {
 		resolve :&Resolve,
 		shell :&mut Shell,
 	) -> CargoResult<Self> {
-		fn ambiguous_names(
-			names :&HashMap<String, HashSet<InternedString>>,
-		) -> BTreeMap<InternedString, &str> {
-			names
-				.iter()
-				.filter(|(_, v)| v.len() > 1)
-				.flat_map(|(k, v)| v.iter().map(move |&v| (v, k.deref())))
-				.collect()
-		}
-
 		let mut this = Self::default();
 
 		let from = from.package_id();
@@ -672,40 +660,35 @@ impl DependencyNames {
 				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
 
 				for dep in deps {
-					let (by_extern_crate_name, by_lib_true_snakecased_name) = if dep.is_build() {
-						(
-							&mut this.build_by_extern_crate_name,
-							&mut this.build_by_lib_true_snakecased_name,
-						)
-					} else {
-						(
-							&mut this.normal_dev_by_extern_crate_name,
-							&mut this.normal_dev_by_lib_true_snakecased_name,
-						)
-					};
-
-					by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+					let names = &mut this[dep.kind()];
+					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
 
 					// Two `Dependenc`ies with the same name point at the same `Package`.
-					by_lib_true_snakecased_name
+					names
+						.by_lib_true_snakecased_name
 						.entry(lib_true_snakecased_name.clone())
 						.or_insert_with(HashSet::new)
 						.insert(dep.name_in_toml());
 				}
 			} else {
 				for dep in deps {
-					if dep.is_build() {
-						&mut this.build_non_lib
-					} else {
-						&mut this.normal_dev_non_lib
-					}
-					.insert(dep.name_in_toml());
+					this[dep.kind()].non_lib.insert(dep.name_in_toml());
 				}
 			}
 		}
 
-		let ambiguous_normal_dev = ambiguous_names(&this.normal_dev_by_lib_true_snakecased_name);
-		let ambiguous_build = ambiguous_names(&this.build_by_lib_true_snakecased_name);
+		let ambiguous_names = |kinds: &[dependency::Kind]| -> BTreeMap<_, _> {
+			kinds
+				.iter()
+				.flat_map(|&k| &this[k].by_lib_true_snakecased_name)
+				.filter(|(_, v)| v.len() > 1)
+				.flat_map(|(k, v)| v.iter().map(move |&v| (v, k.deref())))
+				.collect()
+		};
+
+		let ambiguous_normal_dev =
+			ambiguous_names(&[dependency::Kind::Normal, dependency::Kind::Development]);
+		let ambiguous_build = ambiguous_names(&[dependency::Kind::Build]);
 
 		if !(ambiguous_normal_dev.is_empty() && ambiguous_build.is_empty()) {
 			let mut msg = format!(
@@ -739,5 +722,152 @@ impl DependencyNames {
 		}
 
 		Ok(this)
+	}
+
+	fn has_non_lib(&self) -> bool {
+		[dependency::Kind::Normal, dependency::Kind::Development, dependency::Kind::Build]
+			.iter()
+			.any(|&k| !self[k].non_lib.is_empty())
+	}
+}
+
+impl Index<dependency::Kind> for DependencyNames {
+	type Output = DependencyNamesValue;
+
+	fn index(&self, index: dependency::Kind) -> &DependencyNamesValue {
+		match index {
+			dependency::Kind::Normal => &self.normal,
+			dependency::Kind::Development => &self.development,
+			dependency::Kind::Build => &self.build,
+		}
+	}
+}
+
+impl IndexMut<dependency::Kind> for DependencyNames {
+	fn index_mut(&mut self, index: dependency::Kind) -> &mut DependencyNamesValue {
+		match index {
+			dependency::Kind::Normal => &mut self.normal,
+			dependency::Kind::Development => &mut self.development,
+			dependency::Kind::Build => &mut self.build,
+		}
+	}
+}
+
+#[derive(Debug, Default)]
+struct DependencyNamesValue {
+	by_extern_crate_name :HashMap<String, InternedString>,
+	by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+	non_lib :HashSet<InternedString>,
+}
+
+#[derive(Default, Debug, Serialize)]
+struct Outcome {
+	success: bool,
+	unused_deps: BTreeMap<PackageId, OutcomeUnusedDeps>,
+	note: Option<String>,
+}
+
+impl Outcome {
+	fn print(&self, output: OutputKind, stdout: impl Write) -> io::Result<()> {
+		match output {
+			OutputKind::Human => self.print_human(stdout),
+			OutputKind::Json => self.print_json(stdout),
+		}
+	}
+
+	fn print_human(&self, mut stdout: impl Write) -> io::Result<()> {
+		if self.success {
+			writeln!(stdout, "All deps seem to have been used.")?;
+		} else {
+			writeln!(stdout, "unused dependencies:")?;
+
+			for (member, OutcomeUnusedDeps { normal, development, build, .. }) in &self.unused_deps {
+				fn edge_and_joint(p: bool) -> (char, char) {
+					if p {
+						(' ', '└')
+					} else {
+						('│', '├')
+					}
+				}
+
+				writeln!(stdout, "`{}`", member)?;
+
+				for (deps, (edge, joint), prefix) in &[
+					(normal, edge_and_joint(development.is_empty() && build.is_empty()), ""),
+					(development, edge_and_joint(build.is_empty()), "dev-"),
+					(build, (' ', '└'), "build-"),
+				] {
+					if !deps.is_empty() {
+						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
+						let mut deps = deps.iter().peekable();
+						while let Some(dep) = deps.next() {
+							let joint = if deps.peek().is_some() {
+								'├'
+							} else {
+								'└'
+							};
+							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dep)?;
+						}
+					}
+				}
+			}
+
+			if let Some(note) = &self.note {
+				write!(stdout, "{}", note)?;
+			}
+		}
+		stdout.flush()
+	}
+
+	fn print_json(&self, mut stdout: impl Write) -> io::Result<()> {
+		let json = serde_json::to_string(self).expect("should not fail");
+		writeln!(stdout, "{}", json)?;
+		stdout.flush()
+	}
+}
+
+#[derive(Debug, Serialize)]
+struct OutcomeUnusedDeps {
+	manifest_path: String,
+	normal: BTreeSet<InternedString>,
+	development: BTreeSet<InternedString>,
+	build: BTreeSet<InternedString>,
+}
+
+impl OutcomeUnusedDeps {
+	fn new(manifest_path: &Path) -> CargoResult<Self> {
+		let manifest_path = manifest_path
+			.to_str()
+			.ok_or_else(|| failure::format_err!("{:?} is not valid utf-8", manifest_path))?
+			.to_owned();
+
+		Ok(Self {
+			manifest_path,
+			normal: BTreeSet::new(),
+			development: BTreeSet::new(),
+			build: BTreeSet::new(),
+		})
+	}
+}
+
+#[derive(Clone, Copy, Debug)]
+enum OutputKind {
+	Human,
+	Json,
+}
+
+impl OutputKind {
+	const VARIANTS: &'static [&'static str] = &["human", "json"];
+}
+
+impl FromStr for OutputKind {
+	type Err = &'static str;
+
+	fn from_str(s: &str) -> std::result::Result<Self, &'static str> {
+		match s {
+			"human" => Ok(Self::Human),
+			"json" => Ok(Self::Json),
+			_ => Err(r#"expected "human" or "json" (you should not see this message)"#),
+		}
 	}
 }
