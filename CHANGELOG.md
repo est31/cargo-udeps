@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.8 - February 29, 2020
+
+- Fix inability to `cargo install cargo-udeps`
+- Add `--output json` option
+
 ## Release 0.1.7 - January 31, 2020
 
 - Update cargo dependency to 0.42.0
