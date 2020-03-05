@@ -18,13 +18,13 @@ it needs Rust nightly to actually run.
 #### `cargo install` ([crates.io](https://crates.io/crates/cargo-udeps))
 
 ```
-cargo install cargo-udeps
+cargo install cargo-udeps --locked
 ```
 
 #### `cargo install` ([`master`](https://github.com/est31/cargo-udeps/tree/master))
 
 ```
-cargo install --git https://github.com/est31/cargo-udeps
+cargo install --git https://github.com/est31/cargo-udeps --locked
 ```
 
 ### Usage
