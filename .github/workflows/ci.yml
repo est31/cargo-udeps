@@ -55,12 +55,6 @@ jobs:
           toolchain: ${{ matrix.toolchain_nightly }}
           default: false
 
-      - name: '`cargo build`'
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --verbose
-
       - name: '`cargo test`'
         uses: actions-rs/cargo@v1
         with:
@@ -68,6 +62,27 @@ jobs:
           args: --verbose
         env:
           CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain_nightly }}
+
+      # `locked`, `dev-deps`
+      - name: '`cargo build`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose
+
+      # `locked`, `avoid-dev-deps`
+      - name: '`cargo install --debug --locked`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --path . --debug --verbose --locked
+
+      # `update`, `avoid-dev-deps`
+      - name: '`cargo install --debug`'
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --path . --debug --verbose
 
   release:
     strategy:
