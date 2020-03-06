@@ -53,17 +53,15 @@ Note: They might be false-positive.
 	Ok(())
 }
 
-
 #[test]
 fn with_all_targets() -> CargoResult<()> {
-	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_normal_dev_build_with_all_targets")?
-			.cargo_toml(CARGO_TOML)?
-			.dir("./src")?
-			.file("./src/lib.rs", LIB_RS)?
-			.file("./build.rs", BUILD_RS)?
-			.arg("--all-targets")
-			.run()?;
+	let (code, stdout_masked) = Runner::new("cargo_udeps_test_normal_dev_build_with_all_targets")?
+		.cargo_toml(CARGO_TOML)?
+		.dir("./src")?
+		.file("./src/lib.rs", LIB_RS)?
+		.file("./build.rs", BUILD_RS)?
+		.arg("--all-targets")
+		.run()?;
 	assert_eq!(1, code);
 	assert_eq!(
 		r#"unused dependencies:

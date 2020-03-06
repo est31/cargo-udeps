@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 
 use crate::runner::Runner;
 
-static CARGO_TOML :&str = r#"[workspace]
+static CARGO_TOML: &str = r#"[workspace]
 [package]
 name = "unused_byteorder"
 version = "0.0.1"
@@ -13,7 +13,7 @@ version = "0.0.1"
 byteorder = "1.0.0"
 "#;
 
-static LIB_RS :&str = "";
+static LIB_RS: &str = "";
 
 #[test]
 fn without_all_targets() -> CargoResult<()> {
@@ -39,16 +39,14 @@ Note: They might be false-positive.
 	Ok(())
 }
 
-
 #[test]
 fn with_all_targets() -> CargoResult<()> {
-	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_unused_byteorder_with_all_targets")?
-			.cargo_toml(CARGO_TOML)?
-			.dir("./src")?
-			.file("./src/lib.rs", LIB_RS)?
-			.arg("--all-targets")
-			.run()?;
+	let (code, stdout_masked) = Runner::new("cargo_udeps_test_unused_byteorder_with_all_targets")?
+		.cargo_toml(CARGO_TOML)?
+		.dir("./src")?
+		.file("./src/lib.rs", LIB_RS)?
+		.arg("--all-targets")
+		.run()?;
 	assert_eq!(1, code);
 	assert_eq!(
 		r#"unused dependencies:

@@ -13,9 +13,9 @@ use std::sync::Mutex;
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
-use cargo::core::resolver::ResolveOpts;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
+use cargo::core::resolver::ResolveOpts;
 use cargo::core::shell::Shell;
 use cargo::core::{dependency, InternedString, Package, Resolve};
 use cargo::ops::Packages;
@@ -23,17 +23,25 @@ use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::Serialize;
-use structopt::StructOpt;
 use structopt::clap::{AppSettings, ArgMatches};
+use structopt::StructOpt;
 
 use crate::defs::CrateSaveAnalysis;
 
-pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Config, stdout: W) -> CliResult {
+pub fn run<I: IntoIterator<Item = OsString>, W: Write>(
+	args: I,
+	config: &mut Config,
+	stdout: W,
+) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
 	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
 	cargo::core::maybe_allow_nightly_features();
-	match opt.run(config, stdout, clap_matches.subcommand_matches("udeps").unwrap())? {
+	match opt.run(
+		config,
+		stdout,
+		clap_matches.subcommand_matches("udeps").unwrap(),
+	)? {
 		0 => Ok(()),
 		code => Err(CliError::code(code)),
 	}
@@ -147,7 +155,10 @@ struct OptUdeps {
 	benches: bool,
 	#[structopt(long, help("[cargo] Check all targets"))]
 	all_targets: bool,
-	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"))]
+	#[structopt(
+		long,
+		help("[cargo] Check artifacts in release mode, with optimizations")
+	)]
 	release: bool,
 	#[structopt(
 		long,
@@ -166,7 +177,11 @@ struct OptUdeps {
 	all_features: bool,
 	#[structopt(long, help("[cargo] Do not activate the `default` feature"))]
 	no_default_features: bool,
-	#[structopt(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
+	#[structopt(
+		long,
+		value_name("TRIPLE"),
+		help("[cargo] Check for the target triple")
+	)]
 	target: Option<String>,
 	#[structopt(
 		long,
@@ -211,17 +226,17 @@ struct OptUdeps {
 		value_name("OUTPUT"),
 		default_value("human"),
 		possible_values(OutputKind::VARIANTS),
-		help("Output format"))
-	]
+		help("Output format")
+	)]
 	output: OutputKind,
 }
 
 impl OptUdeps {
 	fn run<W: Write>(
 		&self,
-		config :&mut Config,
-		stdout :W,
-		clap_matches :&ArgMatches
+		config: &mut Config,
+		stdout: W,
+		clap_matches: &ArgMatches,
 	) -> CargoResult<i32> {
 		if self.verbose > 0 {
 			let mut shell = config.shell();
@@ -252,10 +267,12 @@ impl OptUdeps {
 		let test = match self.profile.as_ref().map(Deref::deref) {
 			None => false,
 			Some("test") => true,
-			Some(profile) => return Err(failure::format_err!(
-				"unknown profile: `{}`, only `test` is currently supported",
-				profile,
-			)),
+			Some(profile) => {
+				return Err(failure::format_err!(
+					"unknown profile: `{}`, only `test` is currently supported",
+					profile,
+				))
+			}
 		};
 		let mode = CompileMode::Check { test };
 		let pc = ProfileChecking::Unchecked;
@@ -266,15 +283,12 @@ impl OptUdeps {
 			&self.features,
 			self.all_features,
 			!self.no_default_features,
-
 		);
-		let ws_resolve = cargo::ops::resolve_ws_with_opts(
-			&ws,
-			opts,
-			&Packages::All.to_package_id_specs(&ws)?,
-		)?;
+		let ws_resolve =
+			cargo::ops::resolve_ws_with_opts(&ws, opts, &Packages::All.to_package_id_specs(&ws)?)?;
 
-		let packages = ws_resolve.pkg_set
+		let packages = ws_resolve
+			.pkg_set
 			.get_many(ws_resolve.pkg_set.package_ids())?
 			.into_iter()
 			.map(|p| (p.package_id(), p))
@@ -283,14 +297,19 @@ impl OptUdeps {
 		let dependency_names = ws
 			.members()
 			.map(|from| {
-				let val = DependencyNames::new(from, &packages, &ws_resolve.targeted_resolve, &mut config.shell())?;
+				let val = DependencyNames::new(
+					from,
+					&packages,
+					&ws_resolve.targeted_resolve,
+					&mut config.shell(),
+				)?;
 				let key = from.package_id();
 				Ok((key, val))
 			})
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
 		let data = Arc::new(Mutex::new(ExecData::new(config)?));
-		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
+		let exec: Arc<dyn Executor + 'static> = Arc::new(Exec { data: data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
 
@@ -298,43 +317,59 @@ impl OptUdeps {
 		let mut used_build_dependencies = HashSet::new();
 		let mut normal_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Normal].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| {
+				d[dependency::Kind::Normal]
+					.non_lib
+					.iter()
+					.map(move |&s| (m, s))
+			})
 			.collect::<HashSet<_>>();
 		let mut dev_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Development].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| {
+				d[dependency::Kind::Development]
+					.non_lib
+					.iter()
+					.map(move |&s| (m, s))
+			})
 			.collect::<HashSet<_>>();
 		let mut build_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Build].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| {
+				d[dependency::Kind::Build]
+					.non_lib
+					.iter()
+					.map(move |&s| (m, s))
+			})
 			.collect::<HashSet<_>>();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
-				let collect_names = |
-					by_extern_crate_name: &HashMap<String, InternedString>,
-					by_lib_true_snakecased_name: &HashMap<String, HashSet<InternedString>>,
-					used_dependencies: &mut HashSet<(PackageId, InternedString)>,
-					dependencies: &mut HashSet<(PackageId, InternedString)>,
-				| {
-					for ext in &analysis.prelude.external_crates {
-						if let Some(dependency_names) = by_lib_true_snakecased_name.get(&*ext.id.name) {
-							for dependency_name in dependency_names {
-								used_dependencies.insert((cmd_info.pkg, *dependency_name));
+				let collect_names =
+					|by_extern_crate_name: &HashMap<String, InternedString>,
+					 by_lib_true_snakecased_name: &HashMap<String, HashSet<InternedString>>,
+					 used_dependencies: &mut HashSet<(PackageId, InternedString)>,
+					 dependencies: &mut HashSet<(PackageId, InternedString)>| {
+						for ext in &analysis.prelude.external_crates {
+							if let Some(dependency_names) =
+								by_lib_true_snakecased_name.get(&*ext.id.name)
+							{
+								for dependency_name in dependency_names {
+									used_dependencies.insert((cmd_info.pkg, *dependency_name));
+								}
 							}
 						}
-					}
 
-					for (name, _) in &cmd_info.externs {
-						// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
-						// `Package` depend on.
-						if let Some(dependency_name) = by_extern_crate_name.get(&**name) {
-							dependencies.insert((cmd_info.pkg, *dependency_name));
+						for (name, _) in &cmd_info.externs {
+							// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
+							// `Package` depend on.
+							if let Some(dependency_name) = by_extern_crate_name.get(&**name) {
+								dependencies.insert((cmd_info.pkg, *dependency_name));
+							}
 						}
-					}
-				};
+					};
 
 				collect_names(
 					&dependency_names.normal.by_extern_crate_name,
@@ -360,13 +395,30 @@ impl OptUdeps {
 		let mut outcome = Outcome::default();
 
 		for (dependencies, used_dependencies, kind) in &[
-			(&normal_dependencies, &used_normal_dev_dependencies, dependency::Kind::Normal),
-			(&dev_dependencies, &used_normal_dev_dependencies, dependency::Kind::Development),
-			(&build_dependencies, &used_build_dependencies, dependency::Kind::Build),
+			(
+				&normal_dependencies,
+				&used_normal_dev_dependencies,
+				dependency::Kind::Normal,
+			),
+			(
+				&dev_dependencies,
+				&used_normal_dev_dependencies,
+				dependency::Kind::Development,
+			),
+			(
+				&build_dependencies,
+				&used_build_dependencies,
+				dependency::Kind::Build,
+			),
 		] {
 			for &(id, dependency) in *dependencies {
 				if !used_dependencies.contains(&(id, dependency)) {
-					let OutcomeUnusedDeps { normal, development, build, .. } = outcome
+					let OutcomeUnusedDeps {
+						normal,
+						development,
+						build,
+						..
+					} = outcome
 						.unused_deps
 						.entry(id)
 						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?);
@@ -380,12 +432,14 @@ impl OptUdeps {
 			}
 		}
 
-		outcome.success = outcome
-			.unused_deps
-			.values()
-			.all(|OutcomeUnusedDeps { normal, development, build, .. }| {
-				normal.is_empty() && development.is_empty() && build.is_empty()
-			});
+		outcome.success = outcome.unused_deps.values().all(
+			|OutcomeUnusedDeps {
+			     normal,
+			     development,
+			     build,
+			     ..
+			 }| { normal.is_empty() && development.is_empty() && build.is_empty() },
+		);
 
 		if !outcome.success {
 			let mut note = "".to_owned();
@@ -394,10 +448,8 @@ impl OptUdeps {
 				note += "Note: These dependencies might be used by other targets.\n";
 
 				if !self.lib
-					&& !self.bins
-					&& !self.examples
-					&& !self.tests
-					&& !self.benches
+					&& !self.bins && !self.examples
+					&& !self.tests && !self.benches
 					&& self.bin.is_empty()
 					&& self.example.is_empty()
 					&& self.test.is_empty()
@@ -424,13 +476,13 @@ impl OptUdeps {
 }
 
 struct ExecData {
-	cargo_exe :OsString,
-	supports_color :bool,
-	relevant_cmd_infos :Vec<CmdInfo>,
+	cargo_exe: OsString,
+	supports_color: bool,
+	relevant_cmd_infos: Vec<CmdInfo>,
 }
 
 impl ExecData {
-	fn new(config :&Config) -> CargoResult<Self> {
+	fn new(config: &Config) -> CargoResult<Self> {
 		// `$CARGO` should be present when `cargo-udeps` is executed as `cargo udeps ..` or `cargo run -- udeps ..`.
 		let cargo_exe = env::var_os(cargo::CARGO_ENV)
 			.map(Ok::<_, failure::Error>)
@@ -448,21 +500,26 @@ impl ExecData {
 			})?;
 		Ok(Self {
 			cargo_exe,
-			supports_color :config.shell().supports_color(),
-			relevant_cmd_infos : Vec::new(),
+			supports_color: config.shell().supports_color(),
+			relevant_cmd_infos: Vec::new(),
 		})
 	}
 }
 
 struct Exec {
-	data :Arc<Mutex<ExecData>>,
+	data: Arc<Mutex<ExecData>>,
 }
 
 impl Executor for Exec {
-	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
-			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
-			on_stderr_line :&mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
-
+	fn exec(
+		&self,
+		mut cmd: ProcessBuilder,
+		id: PackageId,
+		target: &Target,
+		mode: CompileMode,
+		on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+		on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+	) -> CargoResult<()> {
 		let cmd_info = cmd_info(id, target.is_custom_build(), &cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
@@ -492,14 +549,16 @@ impl Executor for Exec {
 			cmd.env(cargo::CARGO_ENV, &bt.cargo_exe);
 		}
 		if is_path {
-			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
-				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
+			std::env::set_var(
+				"RUST_SAVE_ANALYSIS_CONFIG",
+				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#,
+			);
 			cmd.arg("-Z").arg("save-analysis");
 		}
 		DefaultExecutor.exec(cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
 	}
-	fn force_rebuild(&self, unit :&Unit) -> bool {
+	fn force_rebuild(&self, unit: &Unit) -> bool {
 		let source_id = (*unit).pkg.summary().source_id();
 		source_id.is_path()
 	}
@@ -507,31 +566,29 @@ impl Executor for Exec {
 
 #[derive(Clone, Debug)]
 struct CmdInfo {
-	pkg :PackageId,
-	custom_build :bool,
-	crate_name :String,
-	crate_type :String,
-	extra_filename :String,
-	cap_lints_allow :bool,
-	out_dir :String,
-	externs :Vec<(String, String)>,
+	pkg: PackageId,
+	custom_build: bool,
+	crate_name: String,
+	crate_type: String,
+	extra_filename: String,
+	cap_lints_allow: bool,
+	out_dir: String,
+	externs: Vec<(String, String)>,
 }
 
 impl CmdInfo {
 	fn get_save_analysis_path(&self) -> PathBuf {
-		let maybe_lib = if self.crate_type.ends_with("lib") ||
-				self.crate_type == "proc-macro" {
+		let maybe_lib = if self.crate_type.ends_with("lib") || self.crate_type == "proc-macro" {
 			"lib"
 		} else {
 			""
 		};
-		let filename = maybe_lib.to_owned() +
-			&self.crate_name + &self.extra_filename + ".json";
+		let filename = maybe_lib.to_owned() + &self.crate_name + &self.extra_filename + ".json";
 		Path::new(&self.out_dir)
 			.join("save-analysis")
 			.join(filename)
 	}
-	fn get_save_analysis(&self, shell :&mut Shell) -> CargoResult<CrateSaveAnalysis> {
+	fn get_save_analysis(&self, shell: &mut Shell) -> CargoResult<CrateSaveAnalysis> {
 		let p = self.get_save_analysis_path();
 		shell.print_ansi(
 			format!(
@@ -551,7 +608,7 @@ impl CmdInfo {
 	}
 }
 
-fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoResult<CmdInfo> {
+fn cmd_info(id: PackageId, custom_build: bool, cmd: &ProcessBuilder) -> CargoResult<CmdInfo> {
 	let mut args_iter = cmd.get_args().iter();
 	let mut crate_name = None;
 	let mut crate_type = None;
@@ -561,7 +618,8 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 	let mut externs = Vec::<(String, String)>::new();
 	while let Some(v) = args_iter.next() {
 		if v == "--extern" {
-			let arg = args_iter.next()
+			let arg = args_iter
+				.next()
 				.map(|a| a.to_str().expect("non-utf8 paths not supported atm"))
 				.map(|a| {
 					let mut splitter = a.split("=");
@@ -576,15 +634,19 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 			}
 		} else if v == "--crate-name" {
 			if let Some(name) = args_iter.next() {
-				crate_name = Some(name.to_str()
-					.expect("non-utf8 crate names not supported")
-					.to_owned());
+				crate_name = Some(
+					name.to_str()
+						.expect("non-utf8 crate names not supported")
+						.to_owned(),
+				);
 			}
 		} else if v == "--crate-type" {
 			if let Some(ty) = args_iter.next() {
-				crate_type = Some(ty.to_str()
-					.expect("non-utf8 crate names not supported")
-					.to_owned());
+				crate_type = Some(
+					ty.to_str()
+						.expect("non-utf8 crate names not supported")
+						.to_owned(),
+				);
 			}
 		} else if v == "--cap-lints" {
 			if let Some(c) = args_iter.next() {
@@ -594,9 +656,11 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 			}
 		} else if v == "--out-dir" {
 			if let Some(d) = args_iter.next() {
-				out_dir = Some(d.to_str()
-					.expect("non-utf8 crate names not supported")
-					.to_owned());
+				out_dir = Some(
+					d.to_str()
+						.expect("non-utf8 crate names not supported")
+						.to_owned(),
+				);
 			}
 		} else if v == "-C" {
 			if let Some(arg) = args_iter.next() {
@@ -637,31 +701,32 @@ struct DependencyNames {
 
 impl DependencyNames {
 	fn new(
-		from :&Package,
-		packages :&HashMap<PackageId, &Package>,
-		resolve :&Resolve,
-		shell :&mut Shell,
+		from: &Package,
+		packages: &HashMap<PackageId, &Package>,
+		resolve: &Resolve,
+		shell: &mut Shell,
 	) -> CargoResult<Self> {
 		let mut this = Self::default();
 
 		let from = from.package_id();
 
 		for (to_pkg, deps) in resolve.deps(from) {
-			let to_pkg = packages.get(&to_pkg).unwrap_or_else(|| panic!("could not find `{}`", to_pkg));
+			let to_pkg = packages
+				.get(&to_pkg)
+				.unwrap_or_else(|| panic!("could not find `{}`", to_pkg));
 
 			// Not all dependencies contain `lib` targets as it is OK to append non-library packages to `Cargo.toml`.
 			// Their `bin` targets can be built with `cargo build --bins -p <SPEC>` and are available in build scripts.
-			if let Some(to_lib) = to_pkg
-				.targets()
-				.iter()
-				.find(|t| t.is_lib())
-			{
-				let extern_crate_name = resolve.extern_crate_name(from, to_pkg.package_id(), to_lib)?;
+			if let Some(to_lib) = to_pkg.targets().iter().find(|t| t.is_lib()) {
+				let extern_crate_name =
+					resolve.extern_crate_name(from, to_pkg.package_id(), to_lib)?;
 				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
 
 				for dep in deps {
 					let names = &mut this[dep.kind()];
-					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+					names
+						.by_extern_crate_name
+						.insert(extern_crate_name.clone(), dep.name_in_toml());
 
 					// Two `Dependenc`ies with the same name point at the same `Package`.
 					names
@@ -725,9 +790,13 @@ impl DependencyNames {
 	}
 
 	fn has_non_lib(&self) -> bool {
-		[dependency::Kind::Normal, dependency::Kind::Development, dependency::Kind::Build]
-			.iter()
-			.any(|&k| !self[k].non_lib.is_empty())
+		[
+			dependency::Kind::Normal,
+			dependency::Kind::Development,
+			dependency::Kind::Build,
+		]
+		.iter()
+		.any(|&k| !self[k].non_lib.is_empty())
 	}
 }
 
@@ -755,9 +824,9 @@ impl IndexMut<dependency::Kind> for DependencyNames {
 
 #[derive(Debug, Default)]
 struct DependencyNamesValue {
-	by_extern_crate_name :HashMap<String, InternedString>,
-	by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
-	non_lib :HashSet<InternedString>,
+	by_extern_crate_name: HashMap<String, InternedString>,
+	by_lib_true_snakecased_name: HashMap<String, HashSet<InternedString>>,
+	non_lib: HashSet<InternedString>,
 }
 
 #[derive(Default, Debug, Serialize)]
@@ -781,7 +850,16 @@ impl Outcome {
 		} else {
 			writeln!(stdout, "unused dependencies:")?;
 
-			for (member, OutcomeUnusedDeps { normal, development, build, .. }) in &self.unused_deps {
+			for (
+				member,
+				OutcomeUnusedDeps {
+					normal,
+					development,
+					build,
+					..
+				},
+			) in &self.unused_deps
+			{
 				fn edge_and_joint(p: bool) -> (char, char) {
 					if p {
 						(' ', '└')
@@ -793,7 +871,11 @@ impl Outcome {
 				writeln!(stdout, "`{}`", member)?;
 
 				for (deps, (edge, joint), prefix) in &[
-					(normal, edge_and_joint(development.is_empty() && build.is_empty()), ""),
+					(
+						normal,
+						edge_and_joint(development.is_empty() && build.is_empty()),
+						"",
+					),
 					(development, edge_and_joint(build.is_empty()), "dev-"),
 					(build, (' ', '└'), "build-"),
 				] {
@@ -801,11 +883,7 @@ impl Outcome {
 						writeln!(stdout, "{}─── {}dependencies", joint, prefix)?;
 						let mut deps = deps.iter().peekable();
 						while let Some(dep) = deps.next() {
-							let joint = if deps.peek().is_some() {
-								'├'
-							} else {
-								'└'
-							};
+							let joint = if deps.peek().is_some() { '├' } else { '└' };
 							writeln!(stdout, "{}    {}─── {:?}", edge, joint, dep)?;
 						}
 					}
