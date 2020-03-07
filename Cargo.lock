@@ -216,6 +216,7 @@ version = "0.1.8"
 dependencies = [
  "ansi_term 0.12.1",
  "cargo",
+ "curl-sys",
  "dirs",
  "failure",
  "pretty_assertions",
@@ -379,9 +380,9 @@ dependencies = [
 
 [[package]]
 name = "curl-sys"
-version = "0.4.28+curl-7.69.0"
+version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c6b7fa5d36aa192e410788b77af65f339af24c8786419e8b48173689a484bf"
+checksum = "4e97059be9b77dbac729368208bb5430cf9baf4c050ae8782a28010136cd906d"
 dependencies = [
  "cc",
  "libc",
