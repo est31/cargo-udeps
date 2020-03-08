@@ -29,4 +29,4 @@ tempdir = "0.3"
 debug = false
 
 [patch.crates-io]
-curl-sys = { git = "https://github.com/alexcrichton/curl-rust/", rev = "552389b966f410805d1b8645b38c192f2b5e0151" }
+curl-sys = { git = "https://github.com/est31/curl-rust/", branch = "bug_bisection" }
