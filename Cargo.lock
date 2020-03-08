@@ -380,7 +380,7 @@ dependencies = [
 [[package]]
 name = "curl-sys"
 version = "0.4.28+curl-7.69.0"
-source = "git+https://github.com/est31/curl-rust/?branch=bug_bisection#6a4e72fee50708dda24d3812e343ea141336073d"
+source = "git+https://github.com/est31/curl-rust/?branch=bug_bisection#4062715ababaabf4c57cb95c83b29de990410bf6"
 dependencies = [
  "cc",
  "libc",
