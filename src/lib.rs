@@ -1,7 +1,6 @@
 mod defs;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::env;
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::io::{self, Write};
@@ -10,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::{env, fmt};
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
@@ -22,7 +22,8 @@ use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
-use serde::Serialize;
+use failure::ResultExt as _;
+use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use structopt::clap::{AppSettings, ArgMatches};
 
@@ -365,17 +366,34 @@ impl OptUdeps {
 			(&build_dependencies, &used_build_dependencies, dependency::Kind::Build),
 		] {
 			for &(id, dependency) in *dependencies {
+				let ignore = ws_resolve
+					.pkg_set
+					.get_one(id)?
+					.manifest()
+					.custom_metadata()
+					.map::<CargoResult<_>, _>(|package_metadata| {
+						let PackageMetadata {
+							cargo_udeps: PackageMetadataCargoUdeps { ignore },
+						} = package_metadata
+							.clone()
+							.try_into()
+							.with_context(|_| "could not parse `package.metadata.cargo-udeps`")?;
+						Ok(ignore)
+					})
+					.transpose()?;
+
 				if !used_dependencies.contains(&(id, dependency)) {
-					let OutcomeUnusedDeps { normal, development, build, .. } = outcome
+					let outcome = outcome
 						.unused_deps
 						.entry(id)
-						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?);
-					match kind {
-						dependency::Kind::Normal => normal,
-						dependency::Kind::Development => development,
-						dependency::Kind::Build => build,
+						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?)
+						.unused_deps_mut(*kind);
+
+					if ignore.map_or(false, |ignore| ignore.contains(*kind, dependency)) {
+						config.shell().info(format_args!("Ignoring `{}` ({:?})", dependency, kind))?;
+					} else {
+						outcome.insert(dependency);
 					}
-					.insert(dependency);
 				}
 			}
 		}
@@ -414,6 +432,7 @@ impl OptUdeps {
 
 			note += "Note: They might be false-positive.\n";
 			note += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
+			note += "      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.\n";
 
 			outcome.note = Some(note);
 		}
@@ -533,18 +552,7 @@ impl CmdInfo {
 	}
 	fn get_save_analysis(&self, shell :&mut Shell) -> CargoResult<CrateSaveAnalysis> {
 		let p = self.get_save_analysis_path();
-		shell.print_ansi(
-			format!(
-				"{} Loading save analysis from {:?}\n",
-				if shell.supports_color() {
-					Colour::Cyan.bold().paint("info:").to_string()
-				} else {
-					"info:".to_owned()
-				},
-				p,
-			)
-			.as_ref(),
-		)?;
+		shell.info(format_args!("Loading save analysis from {:?}", p))?;
 		let f = std::fs::read_to_string(p)?;
 		let res = serde_json::from_str(&f)?;
 		Ok(res)
@@ -760,6 +768,40 @@ struct DependencyNamesValue {
 	non_lib :HashSet<InternedString>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct PackageMetadata {
+	#[serde(default)]
+	cargo_udeps: PackageMetadataCargoUdeps,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PackageMetadataCargoUdeps {
+	#[serde(default)]
+	ignore: PackageMetadataCargoUdepsIgnore,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PackageMetadataCargoUdepsIgnore {
+	#[serde(default)]
+	normal: HashSet<String>,
+	#[serde(default)]
+	development: HashSet<String>,
+	#[serde(default)]
+	build: HashSet<String>,
+}
+
+impl PackageMetadataCargoUdepsIgnore {
+	fn contains(&self, kind: dependency::Kind, name_in_toml: InternedString) -> bool {
+		match kind {
+			dependency::Kind::Normal => &self.normal,
+			dependency::Kind::Development => &self.development,
+			dependency::Kind::Build => &self.build,
+		}
+		.contains(&*name_in_toml)
+	}
+}
+
 #[derive(Default, Debug, Serialize)]
 struct Outcome {
 	success: bool,
@@ -848,6 +890,14 @@ impl OutcomeUnusedDeps {
 			build: BTreeSet::new(),
 		})
 	}
+
+	fn unused_deps_mut(&mut self, kind: dependency::Kind) -> &mut BTreeSet<InternedString> {
+		match kind {
+			dependency::Kind::Normal => &mut self.normal,
+			dependency::Kind::Development => &mut self.development,
+			dependency::Kind::Build => &mut self.build,
+		}
+	}
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -870,4 +920,25 @@ impl FromStr for OutputKind {
 			_ => Err(r#"expected "human" or "json" (you should not see this message)"#),
 		}
 	}
+}
+
+trait ShellExt {
+    fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()>;
+}
+
+impl ShellExt for Shell {
+	fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
+		self.print_ansi(
+			format!(
+				"{} {}\n",
+				if self.supports_color() {
+					Colour::Cyan.bold().paint("info:").to_string()
+				} else {
+					"info:".to_owned()
+				},
+				message,
+			)
+			.as_ref(),
+		)
+    }
 }
