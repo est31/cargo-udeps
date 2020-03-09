@@ -33,6 +33,7 @@ Note: These dependencies might be used by other targets.
       To find dependencies that are not used by any target, enable `--all-targets`.
 Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
+      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
 		stdout_masked,
 	);
@@ -57,6 +58,7 @@ fn with_all_targets() -> CargoResult<()> {
      └─── "byteorder"
 Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
+      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
 		stdout_masked,
 	);

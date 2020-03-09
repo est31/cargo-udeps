@@ -36,6 +36,20 @@ cargo +nightly udeps
 It either prints out a "unused crates" line listing the crates,
 or it prints out a line saying that no crates were unused.
 
+## Ignoring some of the dependencies
+
+To ignore some of the dependencies, add `package.metadata.cargo-udeps.ignore` to `Cargo.toml`.
+
+```toml
+[package.metadata.cargo-udeps.ignore]
+normal = ["if_chain"]
+#development = []
+#build = []
+
+[dependencies]
+if_chain = "1.0.0" # Used only in doc-tests, which `cargo-udeps` cannot check.
+```
+
 ## Known bugs
 
 * Some unused crates might not be detected.
