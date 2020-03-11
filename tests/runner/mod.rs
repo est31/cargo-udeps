@@ -4,6 +4,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{self, AtomicBool};
 use std::{env, fs, io, str};
 
+use anyhow::Context;
 use cargo::core::shell::Shell;
 use cargo::{CargoResult, CliError};
 use tempdir::TempDir;
@@ -28,9 +29,8 @@ impl Runner {
 				.env("RUSTUP_TOOLCHAIN", &toolchain)
 				.output()?;
 			if !status.success() {
-				return Err(failure::err_msg(format!("{}", status))
-					.context(failure::err_msg(format!("could not get the {} rustc", toolchain)))
-					.into());
+				return Err(anyhow::anyhow!("{}", status))
+					.with_context(|| format!("could not get the {} rustc", toolchain));
 			}
 			env::set_var("RUSTC", str::from_utf8(&stdout)?.trim());
 		}

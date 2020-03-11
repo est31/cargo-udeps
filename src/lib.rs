@@ -22,7 +22,6 @@ use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
-use failure::ResultExt as _;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use structopt::clap::{AppSettings, ArgMatches};
@@ -241,19 +240,20 @@ impl OptUdeps {
 				1 => 1,
 				_ => 2,
 			},
-			if self.quiet { Some(true) } else { None }, // https://docs.rs/cargo/0.39.0/src/cargo/util/config.rs.html#602-604
-			&self.color,
+			Some(self.quiet),
+			self.color.as_ref().map(String::as_str),
 			self.frozen,
 			self.locked,
 			self.offline,
 			&self.target_dir,
+			&[],
 			&[],
 		)?;
 		let ws = clap_matches.workspace(config)?;
 		let test = match self.profile.as_ref().map(Deref::deref) {
 			None => false,
 			Some("test") => true,
-			Some(profile) => return Err(failure::format_err!(
+			Some(profile) => return Err(anyhow::anyhow!(
 				"unknown profile: `{}`, only `test` is currently supported",
 				profile,
 			)),
@@ -299,15 +299,15 @@ impl OptUdeps {
 		let mut used_build_dependencies = HashSet::new();
 		let mut normal_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Normal].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::DepKind::Normal].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 		let mut dev_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Development].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::DepKind::Development].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 		let mut build_dependencies = dependency_names
 			.iter()
-			.flat_map(|(&m, d)| d[dependency::Kind::Build].non_lib.iter().map(move |&s| (m, s)))
+			.flat_map(|(&m, d)| d[dependency::DepKind::Build].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 
 		for cmd_info in data.relevant_cmd_infos.iter() {
@@ -361,11 +361,12 @@ impl OptUdeps {
 		let mut outcome = Outcome::default();
 
 		for (dependencies, used_dependencies, kind) in &[
-			(&normal_dependencies, &used_normal_dev_dependencies, dependency::Kind::Normal),
-			(&dev_dependencies, &used_normal_dev_dependencies, dependency::Kind::Development),
-			(&build_dependencies, &used_build_dependencies, dependency::Kind::Build),
+			(&normal_dependencies, &used_normal_dev_dependencies, dependency::DepKind::Normal),
+			(&dev_dependencies, &used_normal_dev_dependencies, dependency::DepKind::Development),
+			(&build_dependencies, &used_build_dependencies, dependency::DepKind::Build),
 		] {
 			for &(id, dependency) in *dependencies {
+				use anyhow::Context;
 				let ignore = ws_resolve
 					.pkg_set
 					.get_one(id)?
@@ -377,7 +378,7 @@ impl OptUdeps {
 						} = package_metadata
 							.clone()
 							.try_into()
-							.with_context(|_| "could not parse `package.metadata.cargo-udeps`")?;
+							.context("could not parse `package.metadata.cargo-udeps`")?;
 						Ok(ignore)
 					})
 					.transpose()?;
@@ -452,7 +453,7 @@ impl ExecData {
 	fn new(config :&Config) -> CargoResult<Self> {
 		// `$CARGO` should be present when `cargo-udeps` is executed as `cargo udeps ..` or `cargo run -- udeps ..`.
 		let cargo_exe = env::var_os(cargo::CARGO_ENV)
-			.map(Ok::<_, failure::Error>)
+			.map(Ok::<_, anyhow::Error>)
 			.unwrap_or_else(|| {
 				// Unless otherwise specified, `$CARGO` is set to `config.cargo_exe()` for compilation commands which points at `cargo-udeps`.
 				let cargo_exe = config.cargo_exe()?;
@@ -619,10 +620,10 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 		}
 	}
 	let pkg = id;
-	let crate_name = crate_name.ok_or_else(|| failure::err_msg("crate name needed"))?;
+	let crate_name = crate_name.ok_or_else(|| anyhow::anyhow!("crate name needed"))?;
 	let crate_type = crate_type.unwrap_or("bin".to_owned());
-	let extra_filename = extra_filename.ok_or_else(|| failure::err_msg("extra-filename needed"))?;
-	let out_dir = out_dir.ok_or_else(|| failure::err_msg("outdir needed"))?;
+	let extra_filename = extra_filename.ok_or_else(|| anyhow::anyhow!("extra-filename needed"))?;
+	let out_dir = out_dir.ok_or_else(|| anyhow::anyhow!("outdir needed"))?;
 
 	Ok(CmdInfo {
 		pkg,
@@ -685,7 +686,7 @@ impl DependencyNames {
 			}
 		}
 
-		let ambiguous_names = |kinds: &[dependency::Kind]| -> BTreeMap<_, _> {
+		let ambiguous_names = |kinds: &[dependency::DepKind]| -> BTreeMap<_, _> {
 			kinds
 				.iter()
 				.flat_map(|&k| &this[k].by_lib_true_snakecased_name)
@@ -695,8 +696,8 @@ impl DependencyNames {
 		};
 
 		let ambiguous_normal_dev =
-			ambiguous_names(&[dependency::Kind::Normal, dependency::Kind::Development]);
-		let ambiguous_build = ambiguous_names(&[dependency::Kind::Build]);
+			ambiguous_names(&[dependency::DepKind::Normal, dependency::DepKind::Development]);
+		let ambiguous_build = ambiguous_names(&[dependency::DepKind::Build]);
 
 		if !(ambiguous_normal_dev.is_empty() && ambiguous_build.is_empty()) {
 			let mut msg = format!(
@@ -733,30 +734,30 @@ impl DependencyNames {
 	}
 
 	fn has_non_lib(&self) -> bool {
-		[dependency::Kind::Normal, dependency::Kind::Development, dependency::Kind::Build]
+		[dependency::DepKind::Normal, dependency::DepKind::Development, dependency::DepKind::Build]
 			.iter()
 			.any(|&k| !self[k].non_lib.is_empty())
 	}
 }
 
-impl Index<dependency::Kind> for DependencyNames {
+impl Index<dependency::DepKind> for DependencyNames {
 	type Output = DependencyNamesValue;
 
-	fn index(&self, index: dependency::Kind) -> &DependencyNamesValue {
+	fn index(&self, index: dependency::DepKind) -> &DependencyNamesValue {
 		match index {
-			dependency::Kind::Normal => &self.normal,
-			dependency::Kind::Development => &self.development,
-			dependency::Kind::Build => &self.build,
+			dependency::DepKind::Normal => &self.normal,
+			dependency::DepKind::Development => &self.development,
+			dependency::DepKind::Build => &self.build,
 		}
 	}
 }
 
-impl IndexMut<dependency::Kind> for DependencyNames {
-	fn index_mut(&mut self, index: dependency::Kind) -> &mut DependencyNamesValue {
+impl IndexMut<dependency::DepKind> for DependencyNames {
+	fn index_mut(&mut self, index: dependency::DepKind) -> &mut DependencyNamesValue {
 		match index {
-			dependency::Kind::Normal => &mut self.normal,
-			dependency::Kind::Development => &mut self.development,
-			dependency::Kind::Build => &mut self.build,
+			dependency::DepKind::Normal => &mut self.normal,
+			dependency::DepKind::Development => &mut self.development,
+			dependency::DepKind::Build => &mut self.build,
 		}
 	}
 }
@@ -792,11 +793,11 @@ struct PackageMetadataCargoUdepsIgnore {
 }
 
 impl PackageMetadataCargoUdepsIgnore {
-	fn contains(&self, kind: dependency::Kind, name_in_toml: InternedString) -> bool {
+	fn contains(&self, kind: dependency::DepKind, name_in_toml: InternedString) -> bool {
 		match kind {
-			dependency::Kind::Normal => &self.normal,
-			dependency::Kind::Development => &self.development,
-			dependency::Kind::Build => &self.build,
+			dependency::DepKind::Normal => &self.normal,
+			dependency::DepKind::Development => &self.development,
+			dependency::DepKind::Build => &self.build,
 		}
 		.contains(&*name_in_toml)
 	}
@@ -880,7 +881,7 @@ impl OutcomeUnusedDeps {
 	fn new(manifest_path: &Path) -> CargoResult<Self> {
 		let manifest_path = manifest_path
 			.to_str()
-			.ok_or_else(|| failure::format_err!("{:?} is not valid utf-8", manifest_path))?
+			.ok_or_else(|| anyhow::anyhow!("{:?} is not valid utf-8", manifest_path))?
 			.to_owned();
 
 		Ok(Self {
@@ -891,11 +892,11 @@ impl OutcomeUnusedDeps {
 		})
 	}
 
-	fn unused_deps_mut(&mut self, kind: dependency::Kind) -> &mut BTreeSet<InternedString> {
+	fn unused_deps_mut(&mut self, kind: dependency::DepKind) -> &mut BTreeSet<InternedString> {
 		match kind {
-			dependency::Kind::Normal => &mut self.normal,
-			dependency::Kind::Development => &mut self.development,
-			dependency::Kind::Build => &mut self.build,
+			dependency::DepKind::Normal => &mut self.normal,
+			dependency::DepKind::Development => &mut self.development,
+			dependency::DepKind::Build => &mut self.build,
 		}
 	}
 }
