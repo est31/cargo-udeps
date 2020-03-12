@@ -1,8 +1,13 @@
 # Changelog
 
+## Release 0.1.9 - March 12, 2020
+
+- Update cargo dependency to 0.43.0. Contributed by [@lu-zero](https://github.com/lu-zero)
+- Add ability to turn off warnings for specific dependencies
+
 ## Release 0.1.8 - February 29, 2020
 
-- Fix inability to `cargo install cargo-udeps`
+- [Fix inability](https://github.com/est31/cargo-udeps/issues/53) to `cargo install cargo-udeps`
 - Add `--output json` option
 
 ## Release 0.1.7 - January 31, 2020
