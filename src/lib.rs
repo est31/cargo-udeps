@@ -328,10 +328,11 @@ impl OptUdeps {
 						}
 					}
 
-					for (name, _) in &cmd_info.externs {
-						// We ignore the `lib` that `bin`s, `example`s, and `test`s in the same
-						// `Package` depend on.
-						if let Some(dependency_name) = by_extern_crate_name.get(&**name) {
+					for extern_crate_name in &cmd_info.extern_crate_names {
+						// We ignore:
+						// 1. the `lib` that `bin`s, `example`s, and `test`s in the same `Package` depend on
+						// 2. crates bundled with `rustc` such as `proc-macro`
+						if let Some(dependency_name) = by_extern_crate_name.get(&**extern_crate_name) {
 							dependencies.insert((cmd_info.pkg, *dependency_name));
 						}
 					}
@@ -534,7 +535,7 @@ struct CmdInfo {
 	extra_filename :String,
 	cap_lints_allow :bool,
 	out_dir :String,
-	externs :Vec<(String, String)>,
+	extern_crate_names :HashSet<String>,
 }
 
 impl CmdInfo {
@@ -567,21 +568,19 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 	let mut extra_filename = None;
 	let mut cap_lints_allow = false;
 	let mut out_dir = None;
-	let mut externs = Vec::<(String, String)>::new();
+	let mut extern_crate_names = HashSet::new();
 	while let Some(v) = args_iter.next() {
 		if v == "--extern" {
-			let arg = args_iter.next()
-				.map(|a| a.to_str().expect("non-utf8 paths not supported atm"))
-				.map(|a| {
-					let mut splitter = a.split("=");
-					if let (Some(n), Some(p)) = (splitter.next(), splitter.next()) {
-						(n.to_owned(), p.to_owned())
-					} else {
-						panic!("invalid format for extern arg: {}", a);
-					}
-				});
-			if let Some(e) = arg {
-				externs.push(e);
+			if let Some(arg) = args_iter.next() {
+				let splitter = arg
+					.to_str()
+					.expect("non-utf8 paths not supported atm")
+					.split('=')
+					.collect::<Vec<_>>();
+				match *splitter {
+					[name] | [name, _] => extern_crate_names.insert(name.to_owned()),
+					_ => panic!("invalid format for extern arg: {:?}", arg),
+				};
 			}
 		} else if v == "--crate-name" {
 			if let Some(name) = args_iter.next() {
@@ -633,7 +632,7 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 		extra_filename,
 		cap_lints_allow,
 		out_dir,
-		externs,
+		extern_crate_names,
 	})
 }
 
