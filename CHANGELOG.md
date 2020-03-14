@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.10 - March 14, 2020
+
+- Fix [regression](https://github.com/est31/cargo-udeps/issues/62) of 0.1.9 that broke compilation with proc macros
+
 ## Release 0.1.9 - March 12, 2020
 
 - Update cargo dependency to 0.43.0. Contributed by [@lu-zero](https://github.com/lu-zero)
