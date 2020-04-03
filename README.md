@@ -75,6 +75,7 @@ You are welcome to expand it:
 * https://github.com/djg/audioipc-2/commit/de0fc58cf1e87079027fce06b50eeffa6ae23d54
 * https://github.com/casey/just/pull/587
 * https://github.com/Garvys/rustfst/pull/76
+* https://github.com/yewstack/yew_router/pull/252
 
 ### License
 [license]: #license
