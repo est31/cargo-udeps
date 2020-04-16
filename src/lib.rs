@@ -336,14 +336,13 @@ impl OptUdeps {
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
 				let collect_names = |
-					by_extern_crate_name: &HashMap<String, InternedString>,
-					by_lib_true_snakecased_name: &HashMap<String, HashSet<InternedString>>,
+					dnv :&DependencyNamesValue,
 					used_dependencies: &mut HashSet<(PackageId, InternedString)>,
 					dependencies: &mut HashSet<(PackageId, InternedString)>,
 				| {
 					match &backend_data {
 						BackendData::SaveAnalysis(analysis) => for ext in &analysis.prelude.external_crates {
-							if let Some(dependency_names) = by_lib_true_snakecased_name.get(&*ext.id.name) {
+							if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
 								for dependency_name in dependency_names {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
@@ -367,7 +366,7 @@ impl OptUdeps {
 								} else {
 									&lib_name[..]
 								};
-								if let Some(dependency_names) = by_lib_true_snakecased_name.get(lib_name) {
+								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
 									for dependency_name in dependency_names {
 										used_dependencies.insert((cmd_info.pkg, *dependency_name));
 									}
@@ -380,27 +379,24 @@ impl OptUdeps {
 						// We ignore:
 						// 1. the `lib` that `bin`s, `example`s, and `test`s in the same `Package` depend on
 						// 2. crates bundled with `rustc` such as `proc-macro`
-						if let Some(dependency_name) = by_extern_crate_name.get(&**extern_crate_name) {
+						if let Some(dependency_name) = dnv.by_extern_crate_name.get(&**extern_crate_name) {
 							dependencies.insert((cmd_info.pkg, *dependency_name));
 						}
 					}
 				};
 
 				collect_names(
-					&dependency_names.normal.by_extern_crate_name,
-					&dependency_names.normal.by_lib_true_snakecased_name,
+					&dependency_names.normal,
 					&mut used_normal_dev_dependencies,
 					&mut normal_dependencies,
 				);
 				collect_names(
-					&dependency_names.development.by_extern_crate_name,
-					&dependency_names.development.by_lib_true_snakecased_name,
+					&dependency_names.development,
 					&mut used_normal_dev_dependencies,
 					&mut dev_dependencies,
 				);
 				collect_names(
-					&dependency_names.build.by_extern_crate_name,
-					&dependency_names.build.by_lib_true_snakecased_name,
+					&dependency_names.build,
 					&mut used_build_dependencies,
 					&mut build_dependencies,
 				);
