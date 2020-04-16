@@ -318,6 +318,12 @@ impl OptUdeps {
 			.flat_map(|(&m, d)| d[dependency::DepKind::Build].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 
+		let mut lib_stem_to_pkg_id = HashMap::new();
+		for cmd_info in data.all_cmd_infos.iter() {
+			let lib_stem = cmd_info.get_artifact_base_name();
+			//println!("lib stem {} -> {}", lib_stem, cmd_info.pkg);
+			lib_stem_to_pkg_id.insert(lib_stem, cmd_info.pkg);
+		}
 		enum BackendData {
 			SaveAnalysis(CrateSaveAnalysis),
 			Depinfo(DepInfo),
@@ -354,21 +360,46 @@ impl OptUdeps {
 									Some(v) => v.to_string(),
 									_ => continue,
 								};
+								// The file names are like cratename-hash.rmeta or .rlib,
+								// where "hash" is a hash string that cargo calls "metadata"
+								// internally and computes in its "compute_metadata" function,
+								// and cratename is the snakecased crate name.
+
+								// First, we continue if there is no - in the filename.
+								// it's likely a source file or some other artifact we aren't
+								// interested in. This is obviously only a stupid heuristic.
 								if !fs.contains("-") {
 									continue;
 								}
-								let lib_name = fs.split("-").next().unwrap();
-								// TODO this is a hack as we unconditionally strip the prefix.
-								// It won't work for proc macro crates that start with "lib".
-								// See maybe_lib in the code above.
-								let lib_name = if lib_name.starts_with("lib") {
-									&lib_name["lib".len()..]
-								} else {
-									&lib_name[..]
-								};
-								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
-									for dependency_name in dependency_names {
+
+								// The metadata hash is not available through cargo's api
+								// outside of the Executor trait impl. We do our best to obtain
+								// the hashes from that impl, but the executor is not called
+								// for anything but crates that have to be recompiled.
+								// Thus, any crates that weren't recompiled we don't know the
+								// metadata hash of. So we perform a check: if we know the metadata
+								// hash, we use it, otherwise we don't.
+								// This gives a bit surprising behaviour when re-running
+								// cargo-udeps but at least sometimes the results are more accurate.
+
+								if let Some(pkg_id) = lib_stem_to_pkg_id.get(&fs) {
+									if let Some(dependency_name) = dnv.by_package_id.get(pkg_id) {
 										used_dependencies.insert((cmd_info.pkg, *dependency_name));
+									}
+								} else {
+									let lib_name = fs.split("-").next().unwrap();
+									// TODO this is a hack as we unconditionally strip the prefix.
+									// It won't work for proc macro crates that start with "lib".
+									// See maybe_lib in the code above.
+									let lib_name = if lib_name.starts_with("lib") {
+											&lib_name["lib".len()..]
+									} else {
+											&lib_name[..]
+									};
+									if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
+										for dependency_name in dependency_names {
+											used_dependencies.insert((cmd_info.pkg, *dependency_name));
+										}
 									}
 								}
 							}
@@ -492,6 +523,7 @@ struct ExecData {
 	cargo_exe :OsString,
 	supports_color :bool,
 	relevant_cmd_infos :Vec<CmdInfo>,
+	all_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
@@ -515,6 +547,7 @@ impl ExecData {
 			cargo_exe,
 			supports_color :config.shell().supports_color(),
 			relevant_cmd_infos : Vec::new(),
+			all_cmd_infos : Vec::new(),
 		})
 	}
 }
@@ -536,7 +569,9 @@ impl Executor for Exec {
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 
-			// If the crate is not a library crate,
+			bt.all_cmd_infos.push(cmd_info.clone());
+
+			// If the crate is not a local crate,
 			// we are not interested in its information.
 			if is_path {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
@@ -585,14 +620,7 @@ struct CmdInfo {
 
 impl CmdInfo {
 	fn get_save_analysis_path(&self) -> PathBuf {
-		let maybe_lib = if self.crate_type.ends_with("lib") ||
-				self.crate_type == "proc-macro" {
-			"lib"
-		} else {
-			""
-		};
-		let filename = maybe_lib.to_owned() +
-			&self.crate_name + &self.extra_filename + ".json";
+		let filename = self.get_artifact_base_name() + ".json";
 		Path::new(&self.out_dir)
 			.join("save-analysis")
 			.join(filename)
@@ -603,6 +631,15 @@ impl CmdInfo {
 		let f = std::fs::read_to_string(p)?;
 		let res = serde_json::from_str(&f)?;
 		Ok(res)
+	}
+	fn get_artifact_base_name(&self) -> String {
+		let maybe_lib = if self.crate_type.ends_with("lib") ||
+				self.crate_type == "proc-macro" {
+			"lib"
+		} else {
+			""
+		};
+		maybe_lib.to_owned() + &self.crate_name + &self.extra_filename
 	}
 	fn get_depinfo_filename(&self) -> String {
 		self.crate_name.clone() + &self.extra_filename + ".d"
@@ -779,8 +816,13 @@ impl DependencyNames {
 				let lib_true_snakecased_name = to_lib.crate_name();
 
 				for dep in deps {
+					assert_eq!(dep.package_name(), to_pkg.name());
 					let names = &mut this[dep.kind()];
 					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+					let r = names.by_package_id.insert(to_pkg.package_id(), dep.name_in_toml());
+					if !r.is_none() {
+						shell.warn(format!("duplicate package mentioned in toml {}. {:?}", to_pkg.package_id(), r))?;
+					}
 
 					// Two `Dependenc`ies with the same name point at the same `Package`.
 					names
@@ -876,6 +918,7 @@ impl IndexMut<dependency::DepKind> for DependencyNames {
 struct DependencyNamesValue {
 	by_extern_crate_name :HashMap<String, InternedString>,
 	by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
+	by_package_id :HashMap<PackageId, InternedString>,
 	non_lib :HashSet<InternedString>,
 }
 
