@@ -561,6 +561,7 @@ impl Executor for Exec {
 			cmd.env(cargo::CARGO_ENV, &bt.cargo_exe);
 		}
 		if is_path {
+			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			cmd.arg("-Z").arg("save-analysis");
