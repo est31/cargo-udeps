@@ -779,7 +779,7 @@ impl DependencyNames {
 				.find(|t| t.is_lib())
 			{
 				let extern_crate_name = resolve.extern_crate_name(from, to_pkg.package_id(), to_lib)?;
-				let lib_true_snakecased_name = to_lib.name().replace('-', "_");
+				let lib_true_snakecased_name = to_lib.crate_name();
 
 				for dep in deps {
 					let names = &mut this[dep.kind()];
