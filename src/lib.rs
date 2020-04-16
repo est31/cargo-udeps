@@ -355,51 +355,54 @@ impl OptUdeps {
 							}
 						},
 						BackendData::Depinfo(depinfo) => for dep in depinfo.deps_of_depfile()  {
-							if let Some(fs) = dep.file_stem() {
-								let fs :String = match fs.to_str() {
-									Some(v) => v.to_string(),
-									_ => continue,
-								};
-								// The file names are like cratename-hash.rmeta or .rlib,
-								// where "hash" is a hash string that cargo calls "metadata"
-								// internally and computes in its "compute_metadata" function,
-								// and cratename is the snakecased crate name.
+							let fs = if let Some(fs) = dep.file_stem() {
+								fs
+							} else {
+								continue
+							};
+							let fs :String = match fs.to_str() {
+								Some(v) => v.to_string(),
+								_ => continue,
+							};
+							// The file names are like cratename-hash.rmeta or .rlib,
+							// where "hash" is a hash string that cargo calls "metadata"
+							// internally and computes in its "compute_metadata" function,
+							// and cratename is the snakecased crate name.
 
-								// First, we continue if there is no - in the filename.
-								// it's likely a source file or some other artifact we aren't
-								// interested in. This is obviously only a stupid heuristic.
-								if !fs.contains("-") {
-									continue;
+							// First, we continue if there is no - in the filename.
+							// it's likely a source file or some other artifact we aren't
+							// interested in. This is obviously only a stupid heuristic.
+							if !fs.contains("-") {
+								continue;
+							}
+
+							// The metadata hash is not available through cargo's api
+							// outside of the Executor trait impl. We do our best to obtain
+							// the hashes from that impl, but the executor is not called
+							// for anything but crates that have to be recompiled.
+							// Thus, any crates that weren't recompiled we don't know the
+							// metadata hash of. So we perform a check: if we know the metadata
+							// hash, we use it, otherwise we don't.
+							// This gives a bit surprising behaviour when re-running
+							// cargo-udeps but at least sometimes the results are more accurate.
+
+							if let Some(pkg_id) = lib_stem_to_pkg_id.get(&fs) {
+								if let Some(dependency_name) = dnv.by_package_id.get(pkg_id) {
+									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
-
-								// The metadata hash is not available through cargo's api
-								// outside of the Executor trait impl. We do our best to obtain
-								// the hashes from that impl, but the executor is not called
-								// for anything but crates that have to be recompiled.
-								// Thus, any crates that weren't recompiled we don't know the
-								// metadata hash of. So we perform a check: if we know the metadata
-								// hash, we use it, otherwise we don't.
-								// This gives a bit surprising behaviour when re-running
-								// cargo-udeps but at least sometimes the results are more accurate.
-
-								if let Some(pkg_id) = lib_stem_to_pkg_id.get(&fs) {
-									if let Some(dependency_name) = dnv.by_package_id.get(pkg_id) {
-										used_dependencies.insert((cmd_info.pkg, *dependency_name));
-									}
+							} else {
+								let lib_name = fs.split("-").next().unwrap();
+								// TODO this is a hack as we unconditionally strip the prefix.
+								// It won't work for proc macro crates that start with "lib".
+								// See maybe_lib in the code above.
+								let lib_name = if lib_name.starts_with("lib") {
+										&lib_name["lib".len()..]
 								} else {
-									let lib_name = fs.split("-").next().unwrap();
-									// TODO this is a hack as we unconditionally strip the prefix.
-									// It won't work for proc macro crates that start with "lib".
-									// See maybe_lib in the code above.
-									let lib_name = if lib_name.starts_with("lib") {
-											&lib_name["lib".len()..]
-									} else {
-											&lib_name[..]
-									};
-									if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
-										for dependency_name in dependency_names {
-											used_dependencies.insert((cmd_info.pkg, *dependency_name));
-										}
+										&lib_name[..]
+								};
+								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
+									for dependency_name in dependency_names {
+										used_dependencies.insert((cmd_info.pkg, *dependency_name));
 									}
 								}
 							}
