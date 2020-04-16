@@ -318,9 +318,21 @@ impl OptUdeps {
 			.flat_map(|(&m, d)| d[dependency::DepKind::Build].non_lib.iter().map(move |&s| (m, s)))
 			.collect::<HashSet<_>>();
 
+		enum BackendData {
+			SaveAnalysis(CrateSaveAnalysis),
+			Depinfo(DepInfo),
+		}
 		for cmd_info in data.relevant_cmd_infos.iter() {
-			let depinfo = cmd_info.get_depinfo(&mut config.shell())?;
-			let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
+			let backend_data = match self.backend {
+				Backend::SaveAnalysis => {
+					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
+					BackendData::SaveAnalysis(analysis)
+				},
+				Backend::Depinfo => {
+					let depinfo = cmd_info.get_depinfo(&mut config.shell())?;
+					BackendData::Depinfo(depinfo)
+				},
+			};
 			// may not be workspace member
 			if let Some(dependency_names) = dependency_names.get(&cmd_info.pkg) {
 				let collect_names = |
@@ -329,15 +341,15 @@ impl OptUdeps {
 					used_dependencies: &mut HashSet<(PackageId, InternedString)>,
 					dependencies: &mut HashSet<(PackageId, InternedString)>,
 				| {
-					match self.backend {
-						Backend::SaveAnalysis => for ext in &analysis.prelude.external_crates {
+					match &backend_data {
+						BackendData::SaveAnalysis(analysis) => for ext in &analysis.prelude.external_crates {
 							if let Some(dependency_names) = by_lib_true_snakecased_name.get(&*ext.id.name) {
 								for dependency_name in dependency_names {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
 							}
 						},
-						Backend::Depinfo => for dep in depinfo.deps_of_depfile()  {
+						BackendData::Depinfo(depinfo) => for dep in depinfo.deps_of_depfile()  {
 							if let Some(fs) = dep.file_stem() {
 								let fs :String = match fs.to_str() {
 									Some(v) => v.to_string(),
