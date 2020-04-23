@@ -270,7 +270,7 @@ impl OptUdeps {
 		let pc = ProfileChecking::Unchecked;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
 		let requested_kind = compile_opts.build_config.requested_kind;
-        let target_data = RustcTargetData::new(&ws, requested_kind)?;
+		let target_data = RustcTargetData::new(&ws, requested_kind)?;
 
 		let opts = ResolveOpts::new(
 			/*dev_deps*/ true,
