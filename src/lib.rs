@@ -12,8 +12,8 @@ use std::sync::Mutex;
 use std::{env, fmt};
 
 use ansi_term::Colour;
-use cargo::core::compiler::{DefaultExecutor, Executor, Unit};
-use cargo::core::resolver::ResolveOpts;
+use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
+use cargo::core::resolver::{HasDevUnits, ResolveOpts};
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
@@ -248,7 +248,7 @@ impl OptUdeps {
 				1 => 1,
 				_ => 2,
 			},
-			Some(self.quiet),
+			self.quiet,
 			self.color.as_ref().map(String::as_str),
 			self.frozen,
 			self.locked,
@@ -269,6 +269,8 @@ impl OptUdeps {
 		let mode = CompileMode::Check { test };
 		let pc = ProfileChecking::Unchecked;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
+		let requested_kind = compile_opts.build_config.requested_kind;
+        let target_data = RustcTargetData::new(&ws, requested_kind)?;
 
 		let opts = ResolveOpts::new(
 			/*dev_deps*/ true,
@@ -279,8 +281,11 @@ impl OptUdeps {
 		);
 		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
-			opts,
+			&target_data,
+			requested_kind,
+			&opts,
 			&Packages::All.to_package_id_specs(&ws)?,
+			HasDevUnits::Yes,
 		)?;
 
 		let packages = ws_resolve.pkg_set
