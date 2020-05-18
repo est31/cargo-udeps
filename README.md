@@ -27,6 +27,13 @@ cargo install cargo-udeps --locked
 cargo install --git https://github.com/est31/cargo-udeps --locked
 ```
 
+#### Dedicated packages
+
+Some GNU/Linux distros have packaged `cargo-udeps`:
+
+* Nix/Nix OS: `cargo-udeps`
+* Arch via AUR: `yay -S cargo-udeps`
+
 ### Usage
 
 ```
