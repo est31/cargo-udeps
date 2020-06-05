@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.12 - June 6, 2020
+
+- Update cargo dependency to 0.45.0.
+
 ## Release 0.1.11 - April 23, 2020
 
 - Update cargo dependency to 0.44.0. Contributed by [@lu-zero](https://github.com/lu-zero)
