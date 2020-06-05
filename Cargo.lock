@@ -117,9 +117,9 @@ checksum = "716960a18f978640f25101b5cbf1c6f6b0d3192fab36a2d98ca96f0ecbe41010"
 
 [[package]]
 name = "cargo"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2be4ac618c27ed1bdaef9323275205f8f29da881d0db5ceda42df4438d866e56"
+checksum = "3a44c127914167e3a0a6bb84118ad46d6e5b65d52fd59a579d0c32be0c4e014b"
 dependencies = [
  "anyhow",
  "atty",
@@ -128,7 +128,6 @@ dependencies = [
  "clap",
  "core-foundation",
  "crates-io",
- "crossbeam-channel",
  "crossbeam-utils",
  "crypto-hash",
  "curl",
@@ -136,7 +135,6 @@ dependencies = [
  "env_logger",
  "filetime",
  "flate2",
- "fs2",
  "fwdansi",
  "git2",
  "git2-curl",
@@ -172,6 +170,7 @@ dependencies = [
  "termcolor",
  "toml",
  "unicode-width",
+ "unicode-xid",
  "url",
  "walkdir",
  "winapi",
@@ -273,9 +272,9 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "crates-io"
-version = "0.32.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65949ecc100abd1df7d80740ee58afb599f2447c5011bbf5acb5a039a67607ca"
+checksum = "a51c9064687a09f007c08645d5f3ac769030794d91b07faba7bf35284b6a212c"
 dependencies = [
  "anyhow",
  "curl",
@@ -455,16 +454,6 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
-
-[[package]]
-name = "fs2"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
-dependencies = [
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "fuchsia-cprng"
