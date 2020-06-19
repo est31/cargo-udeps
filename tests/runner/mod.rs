@@ -7,7 +7,7 @@ use std::{env, fs, io, str};
 use anyhow::Context;
 use cargo::core::shell::Shell;
 use cargo::{CargoResult, CliError};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 static DEFAULT_TOOLCHAIN :&str = "nightly";
 
@@ -34,7 +34,7 @@ impl Runner {
 			}
 			env::set_var("RUSTC", str::from_utf8(&stdout)?.trim());
 		}
-		let cwd = TempDir::new(prefix)?;
+		let cwd = tempfile::Builder::new().prefix(prefix).tempdir()?;
 		let homedir = dirs::home_dir().expect("couldn't get the current directory of the process");
 		let args = vec!["".into(), "udeps".into()];
 		Ok(Self {
