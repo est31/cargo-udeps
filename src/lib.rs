@@ -14,6 +14,7 @@ use std::{env, fmt};
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
 use cargo::core::resolver::{HasDevUnits, ResolveOpts};
+use cargo::core::resolver::features::ForceAllTargets;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
@@ -269,8 +270,8 @@ impl OptUdeps {
 		let mode = CompileMode::Check { test };
 		let pc = ProfileChecking::Unchecked;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
-		let requested_kind = compile_opts.build_config.requested_kind;
-		let target_data = RustcTargetData::new(&ws, requested_kind)?;
+		let requested_kinds = &compile_opts.build_config.requested_kinds;
+		let target_data = RustcTargetData::new(&ws, requested_kinds)?;
 
 		let opts = ResolveOpts::new(
 			/*dev_deps*/ true,
@@ -282,10 +283,11 @@ impl OptUdeps {
 		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
 			&target_data,
-			requested_kind,
+			requested_kinds,
 			&opts,
 			&Packages::All.to_package_id_specs(&ws)?,
 			HasDevUnits::Yes,
+			ForceAllTargets::No,
 		)?;
 
 		let packages = ws_resolve.pkg_set
@@ -553,7 +555,7 @@ impl ExecData {
 			})?;
 		Ok(Self {
 			cargo_exe,
-			supports_color :config.shell().supports_color(),
+			supports_color :config.shell().err_supports_color(),
 			relevant_cmd_infos : Vec::new(),
 			all_cmd_infos : Vec::new(),
 		})
@@ -1115,7 +1117,7 @@ impl ShellExt for Shell {
 		self.print_ansi(
 			format!(
 				"{} {}\n",
-				if self.supports_color() {
+				if self.err_supports_color() {
 					Colour::Cyan.bold().paint("info:").to_string()
 				} else {
 					"info:".to_owned()
