@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.13 - July 19, 2020
+
+- Update cargo dependency to 0.46.0.
+- Remove `tempdir` dev dependency in favour of `tempfile`. Contributed by [@paolobarbolini](https://github.com/paolobarbolini)
+
 ## Release 0.1.12 - June 6, 2020
 
 - Update cargo dependency to 0.45.0.
