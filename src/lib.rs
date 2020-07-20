@@ -250,7 +250,7 @@ impl OptUdeps {
 				_ => 2,
 			},
 			self.quiet,
-			self.color.as_ref().map(String::as_str),
+			self.color.as_deref(),
 			self.frozen,
 			self.locked,
 			self.offline,
@@ -259,7 +259,7 @@ impl OptUdeps {
 			&[],
 		)?;
 		let ws = clap_matches.workspace(config)?;
-		let test = match self.profile.as_ref().map(Deref::deref) {
+		let test = match self.profile.as_deref() {
 			None => false,
 			Some("test") => true,
 			Some(profile) => return Err(anyhow::anyhow!(
@@ -379,7 +379,7 @@ impl OptUdeps {
 							// First, we continue if there is no - in the filename.
 							// it's likely a source file or some other artifact we aren't
 							// interested in. This is obviously only a stupid heuristic.
-							if !fs.contains("-") {
+							if !fs.contains('-') {
 								continue;
 							}
 
@@ -398,7 +398,7 @@ impl OptUdeps {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
 							} else {
-								let lib_name = fs.split("-").next().unwrap();
+								let lib_name = fs.split('-').next().unwrap();
 								// TODO this is a hack as we unconditionally strip the prefix.
 								// It won't work for proc macro crates that start with "lib".
 								// See maybe_lib in the code above.
@@ -684,7 +684,7 @@ impl DepInfo {
 				v.file_name() == Some(&std::ffi::OsString::from(&self.f_name))
 			})
 			.map(|v| v.1.clone())
-			.unwrap_or(vec![])
+			.unwrap_or_default()
 	}
 }
 
@@ -767,7 +767,7 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 		} else if v == "-C" {
 			if let Some(arg) = args_iter.next() {
 				let arg = arg.to_str().expect("non-utf8 args not supported atm");
-				let mut splitter = arg.split("=");
+				let mut splitter = arg.split('=');
 				if let (Some(n), Some(p)) = (splitter.next(), splitter.next()) {
 					if n == "extra-filename" {
 						extra_filename = Some(p.to_owned());
@@ -778,7 +778,7 @@ fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoRes
 	}
 	let pkg = id;
 	let crate_name = crate_name.ok_or_else(|| anyhow::anyhow!("crate name needed"))?;
-	let crate_type = crate_type.unwrap_or("bin".to_owned());
+	let crate_type = crate_type.unwrap_or_else(|| "bin".to_owned());
 	let extra_filename = extra_filename.ok_or_else(|| anyhow::anyhow!("extra-filename needed"))?;
 	let out_dir = out_dir.ok_or_else(|| anyhow::anyhow!("outdir needed"))?;
 
@@ -830,7 +830,7 @@ impl DependencyNames {
 					let names = &mut this[dep.kind()];
 					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
 					let r = names.by_package_id.insert(to_pkg.package_id(), dep.name_in_toml());
-					if !r.is_none() {
+					if r.is_some() {
 						shell.warn(format!("duplicate package mentioned in toml {}. {:?}", to_pkg.package_id(), r))?;
 					}
 
