@@ -18,9 +18,10 @@ use cargo::core::resolver::features::ForceAllTargets;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::{dependency, InternedString, Package, Resolve};
+use cargo::core::{dependency, Package, Resolve};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
+use cargo::util::interning::InternedString;
 use cargo::util::process_builder::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::{Deserialize, Serialize};
@@ -567,13 +568,16 @@ struct Exec {
 }
 
 impl Executor for Exec {
-	fn exec(&self, mut cmd :ProcessBuilder, id :PackageId, target :&Target,
+	fn exec(&self, cmd :&ProcessBuilder, id :PackageId, target :&Target,
 			mode :CompileMode, on_stdout_line :&mut dyn FnMut(&str) -> CargoResult<()>,
 			on_stderr_line :&mut dyn FnMut(&str) -> CargoResult<()>) -> CargoResult<()> {
 
-		let cmd_info = cmd_info(id, target.is_custom_build(), &cmd).unwrap_or_else(|e| {
+		let cmd_info = cmd_info(id, target.is_custom_build(), cmd).unwrap_or_else(|e| {
 			panic!("Couldn't obtain crate info {:?}: {:?}", id, e);
 		});
+
+		let mut cmd = cmd.clone();
+
 		let is_path = id.source_id().is_path();
 		{
 			// TODO unwrap used
@@ -607,7 +611,7 @@ impl Executor for Exec {
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			cmd.arg("-Z").arg("save-analysis");
 		}
-		DefaultExecutor.exec(cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
+		DefaultExecutor.exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
 	}
 	fn force_rebuild(&self, unit :&Unit) -> bool {
