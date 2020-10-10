@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.15 - October 10, 2020
+
+- Update cargo dependency to 0.48.0.
+
 ## Release 0.1.14 - August 28, 2020
 
 - Update cargo dependency to 0.47.0.
