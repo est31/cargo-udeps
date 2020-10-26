@@ -520,7 +520,7 @@ impl OptUdeps {
 
 			note += "Note: They might be false-positive.\n";
 			note += "      For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.\n";
-			note += "      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.\n";
+			note += "      To ignore some dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.\n";
 
 			outcome.note = Some(note);
 		}
