@@ -37,7 +37,7 @@ Note: Some dependencies are non-library packages.
       `cargo-udeps` regards them as unused.
 Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
-      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
+      To ignore some dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
 		stdout_masked,
 	);
@@ -64,7 +64,7 @@ Note: Some dependencies are non-library packages.
       `cargo-udeps` regards them as unused.
 Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
-      To ignore some of dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
+      To ignore some dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
 		stdout_masked,
 	);
