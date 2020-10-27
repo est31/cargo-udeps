@@ -15,7 +15,7 @@ static RUSTC_ENV_SET :AtomicBool = AtomicBool::new(false);
 
 pub(crate) struct Runner {
 	cwd :TempDir,
-	homedir :PathBuf,
+	cargo_home :PathBuf,
 	args :Vec<OsString>,
 }
 
@@ -35,11 +35,12 @@ impl Runner {
 			env::set_var("RUSTC", str::from_utf8(&stdout)?.trim());
 		}
 		let cwd = tempfile::Builder::new().prefix(prefix).tempdir()?;
-		let homedir = dirs::home_dir().expect("couldn't get the current directory of the process");
+		let cargo_home = cargo::util::config::homedir(cwd.as_ref())
+			.with_context(|| "couldn't find the \"Cargo home\"")?;
 		let args = vec!["".into(), "udeps".into()];
 		Ok(Self {
 			cwd,
-			homedir,
+			cargo_home,
 			args,
 		})
 	}
@@ -68,7 +69,7 @@ impl Runner {
 	pub(crate) fn run(self) -> CargoResult<(i32, String)> {
 		let mut stdout = vec![];
 		let stderr = Shell::from_write(Box::new(vec![]));
-		let mut config = cargo::Config::new(stderr, self.cwd.path().to_owned(), self.homedir.clone());
+		let mut config = cargo::Config::new(stderr, self.cwd.path().to_owned(), self.cargo_home.clone());
 		let code = match cargo_udeps::run(self.args.clone(), &mut config, &mut stdout) {
 			Ok(()) => 0,
 			Err(CliError {
