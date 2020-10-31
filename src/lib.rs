@@ -471,16 +471,15 @@ impl OptUdeps {
 					.transpose()?;
 
 				if !used_dependencies.contains(&(id, dependency)) {
-					let outcome = outcome
-						.unused_deps
-						.entry(id)
-						.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?)
-						.unused_deps_mut(*kind);
-
 					if ignore.map_or(false, |ignore| ignore.contains(*kind, dependency)) {
 						config.shell().info(format_args!("Ignoring `{}` ({:?})", dependency, kind))?;
 					} else {
-						outcome.insert(dependency);
+						outcome
+							.unused_deps
+							.entry(id)
+							.or_insert(OutcomeUnusedDeps::new(packages[&id].manifest_path())?)
+							.unused_deps_mut(*kind)
+							.insert(dependency);
 					}
 				}
 			}
