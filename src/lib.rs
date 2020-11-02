@@ -18,7 +18,7 @@ use cargo::core::resolver::features::ForceAllTargets;
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::{dependency, Package, Resolve};
+use cargo::core::{dependency, Package, Resolve, Workspace};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::interning::InternedString;
@@ -306,7 +306,7 @@ impl OptUdeps {
 			})
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
-		let data = Arc::new(Mutex::new(ExecData::new(config)?));
+		let data = Arc::new(Mutex::new(ExecData::new(&ws)?));
 		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
@@ -532,30 +532,32 @@ impl OptUdeps {
 struct ExecData {
 	cargo_exe :OsString,
 	supports_color :bool,
+	workspace_members :Vec<PackageId>,
 	relevant_cmd_infos :Vec<CmdInfo>,
 	all_cmd_infos :Vec<CmdInfo>,
 }
 
 impl ExecData {
-	fn new(config :&Config) -> CargoResult<Self> {
+	fn new(ws :&Workspace<'_>) -> CargoResult<Self> {
 		// `$CARGO` should be present when `cargo-udeps` is executed as `cargo udeps ..` or `cargo run -- udeps ..`.
 		let cargo_exe = env::var_os(cargo::CARGO_ENV)
 			.map(Ok::<_, anyhow::Error>)
 			.unwrap_or_else(|| {
 				// Unless otherwise specified, `$CARGO` is set to `config.cargo_exe()` for compilation commands which points at `cargo-udeps`.
-				let cargo_exe = config.cargo_exe()?;
-				config.shell().warn(format!(
+				let cargo_exe = ws.config().cargo_exe()?;
+				ws.config().shell().warn(format!(
 					"Couldn't find $CARGO environment variable. Setting it to {}",
 					cargo_exe.display(),
 				))?;
-				config.shell().warn(
+				ws.config().shell().warn(
 					"`cargo-udeps` currently does not support basic Cargo commands such as `build`",
 				)?;
 				Ok(cargo_exe.into())
 			})?;
 		Ok(Self {
 			cargo_exe,
-			supports_color :config.shell().err_supports_color(),
+			supports_color :ws.config().shell().err_supports_color(),
+			workspace_members :ws.members().map(Package::package_id).collect(),
 			relevant_cmd_infos : Vec::new(),
 			all_cmd_infos : Vec::new(),
 		})
@@ -578,17 +580,25 @@ impl Executor for Exec {
 		let mut cmd = cmd.clone();
 
 		let is_path = id.source_id().is_path();
+		let is_workspace_member;
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
 
+			is_workspace_member = bt.workspace_members.contains(&id);
+
 			bt.all_cmd_infos.push(cmd_info.clone());
 
-			// If the crate is not a local crate,
+			// If the crate is not a in the workspace,
 			// we are not interested in its information.
-			if is_path {
+			if is_workspace_member {
 				bt.relevant_cmd_infos.push(cmd_info.clone());
 			}
+			assert!(
+				!(!is_path && is_workspace_member),
+				"`{}` is a workspace member but is not from a filesystem path",
+				id,
+			);
 			if (!cmd_info.cap_lints_allow) != is_path {
 				on_stderr_line(&format!(
 					"{} (!cap_lints_allow)={} differs from is_path={} for id={}",
@@ -604,7 +614,7 @@ impl Executor for Exec {
 			}
 			cmd.env(cargo::CARGO_ENV, &bt.cargo_exe);
 		}
-		if is_path {
+		if is_workspace_member {
 			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
@@ -614,8 +624,8 @@ impl Executor for Exec {
 		Ok(())
 	}
 	fn force_rebuild(&self, unit :&Unit) -> bool {
-		let source_id = (*unit).pkg.summary().source_id();
-		source_id.is_path()
+		let bt = self.data.lock().unwrap();
+		bt.workspace_members.contains(&unit.pkg.package_id())
 	}
 }
 
