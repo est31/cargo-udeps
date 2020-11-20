@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.16 - November 20, 2020
+
+- Only force rebuilds on workspace members.
+- Update cargo dependency to 0.49.0.
+
 ## Release 0.1.15 - October 10, 2020
 
 - Update cargo dependency to 0.48.0.
