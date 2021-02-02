@@ -32,7 +32,7 @@ cargo install --git https://github.com/est31/cargo-udeps --locked
 Some GNU/Linux distros have packaged `cargo-udeps`:
 
 * Nix/Nix OS: `cargo-udeps`
-* Arch via AUR: `yay -S cargo-udeps`
+* Arch Linux: `pacman -S cargo-udeps`
 
 ### Usage
 
