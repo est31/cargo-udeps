@@ -14,7 +14,7 @@ use std::{env, fmt};
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
 use cargo::core::resolver::{HasDevUnits, ResolveOpts};
-use cargo::core::resolver::features::ForceAllTargets;
+use cargo::core::resolver::features::{ForceAllTargets, RequestedFeatures};
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
@@ -274,12 +274,14 @@ impl OptUdeps {
 		let requested_kinds = &compile_opts.build_config.requested_kinds;
 		let target_data = RustcTargetData::new(&ws, requested_kinds)?;
 
-		let opts = ResolveOpts::new(
-			/*dev_deps*/ true,
+		let req = RequestedFeatures::from_command_line(
 			&self.features,
 			self.all_features,
 			!self.no_default_features,
-
+		);
+		let opts = ResolveOpts::new(
+			/*dev_deps*/ true,
+			req,
 		);
 		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
