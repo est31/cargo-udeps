@@ -83,6 +83,7 @@ You are welcome to expand it:
 * https://github.com/casey/just/pull/587
 * https://github.com/Garvys/rustfst/pull/76
 * https://github.com/yewstack/yew_router/pull/252
+* https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/169
 
 ### License
 [license]: #license
