@@ -12,6 +12,9 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+vendored-openssl = ["cargo/vendored-openssl"]
+
 [dependencies]
 ansi_term = "0.12"
 cargo = "0.51"
