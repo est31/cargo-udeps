@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.20 - Mar 26, 2021
+
+- Update cargo dependency to 0.52.0.
+
 ## Release 0.1.19 - Mar 9, 2021
 
 - Update lockfile version of rand_core to 0.6.2 in response to a [security issue in 0.6.1](https://rustsec.org/advisories/RUSTSEC-2021-0023). Contributed by [@rajivshah3](https://github.com/rajivshah3)
