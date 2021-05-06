@@ -34,7 +34,6 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
 	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
-	cargo::core::maybe_allow_nightly_features();
 	match opt.run(config, stdout, clap_matches.subcommand_matches("udeps").unwrap())? {
 		0 => Ok(()),
 		code => Err(CliError::code(code)),
