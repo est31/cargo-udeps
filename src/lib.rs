@@ -258,6 +258,7 @@ impl OptUdeps {
 			&["binary-dep-depinfo".to_string()],
 			&[],
 		)?;
+		assert!(config.nightly_features_allowed);
 		let ws = clap_matches.workspace(config)?;
 		let test = match self.profile.as_deref() {
 			None => false,
