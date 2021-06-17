@@ -13,8 +13,8 @@ use std::{env, fmt};
 
 use ansi_term::Colour;
 use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
-use cargo::core::resolver::{HasDevUnits, ResolveOpts};
-use cargo::core::resolver::features::{ForceAllTargets, RequestedFeatures, CliFeatures};
+use cargo::core::resolver::HasDevUnits;
+use cargo::core::resolver::features::{ForceAllTargets, CliFeatures};
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
