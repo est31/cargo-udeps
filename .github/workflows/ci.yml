@@ -65,10 +65,10 @@ jobs:
 
       # `locked`, `dev-deps`
       - name: '`cargo build`'
+        env:
+         RUSTFLAGS: -D warnings
         uses: actions-rs/cargo@v1
         with:
-          env:
-           RUSTFLAGS: -D warnings
           command: build
           args: --verbose
 
