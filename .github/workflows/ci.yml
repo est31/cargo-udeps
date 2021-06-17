@@ -67,6 +67,8 @@ jobs:
       - name: '`cargo build`'
         uses: actions-rs/cargo@v1
         with:
+          env:
+           RUSTFLAGS: -D warnings
           command: build
           args: --verbose
 
