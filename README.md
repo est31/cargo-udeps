@@ -84,6 +84,7 @@ You are welcome to expand it:
 * https://github.com/Garvys/rustfst/pull/76
 * https://github.com/yewstack/yew_router/pull/252
 * https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/169
+* https://github.com/hendrikmaus/helm-templexer/pull/85
 
 ### License
 [license]: #license
