@@ -73,6 +73,7 @@ The `--profile test` flag can be used to check unit tests with the
 }
 
 #[derive(StructOpt, Debug)]
+#[allow(dead_code)]
 struct OptUdeps {
 	#[structopt(short, long, help("[cargo] No output printed to stdout"))]
 	quiet: bool,
@@ -630,6 +631,7 @@ impl Executor for Exec {
 #[derive(Clone, Debug)]
 struct CmdInfo {
 	pkg :PackageId,
+	#[allow(dead_code)]
 	custom_build :bool,
 	crate_name :String,
 	crate_type :String,
