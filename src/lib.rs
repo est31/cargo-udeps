@@ -269,7 +269,7 @@ impl OptUdeps {
 			)),
 		};
 		let mode = CompileMode::Check { test };
-		let pc = ProfileChecking::Unchecked;
+		let pc = ProfileChecking::LegacyTestOnly;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
 		let requested_kinds = &compile_opts.build_config.requested_kinds;
 		let target_data = RustcTargetData::new(&ws, requested_kinds)?;
@@ -1125,7 +1125,7 @@ trait ShellExt {
 
 impl ShellExt for Shell {
 	fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
-		self.print_ansi(
+		self.print_ansi_stderr(
 			format!(
 				"{} {}\n",
 				if self.err_supports_color() {
