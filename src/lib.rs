@@ -565,7 +565,7 @@ impl ExecData {
 
 struct Exec {
 	data :Arc<Mutex<ExecData>>,
-    backend :Backend,
+	backend :Backend,
 }
 
 impl Executor for Exec {
@@ -619,8 +619,8 @@ impl Executor for Exec {
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			if let Backend::SaveAnalysis = self.backend {
-                cmd.arg("-Z").arg("save-analysis");
-            }
+				cmd.arg("-Z").arg("save-analysis");
+			}
 		}
 		DefaultExecutor.exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
@@ -880,7 +880,7 @@ impl DependencyNames {
 		if !(ambiguous_normal_dev.is_empty() && ambiguous_build.is_empty()) {
 			let mut msg = format!(
 				"Currently `cargo-udeps` cannot distinguish multiple crates with the same `lib` name. This may cause false negative\n\
-				 `{}`\n",
+				`{}`\n",
 				from,
 			);
 			let (edge, joint) = if ambiguous_build.is_empty() {
@@ -1125,7 +1125,7 @@ impl FromStr for Backend {
 }
 
 trait ShellExt {
-    fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()>;
+	fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()>;
 }
 
 impl ShellExt for Shell {
@@ -1142,5 +1142,5 @@ impl ShellExt for Shell {
 			)
 			.as_ref(),
 		)
-    }
+	}
 }
