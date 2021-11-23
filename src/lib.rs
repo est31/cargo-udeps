@@ -306,7 +306,7 @@ impl OptUdeps {
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
 		let data = Arc::new(Mutex::new(ExecData::new(&ws)?));
-		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
+		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone(), backend : self.backend });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
 
@@ -565,6 +565,7 @@ impl ExecData {
 
 struct Exec {
 	data :Arc<Mutex<ExecData>>,
+    backend :Backend,
 }
 
 impl Executor for Exec {
@@ -617,7 +618,9 @@ impl Executor for Exec {
 			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
-			cmd.arg("-Z").arg("save-analysis");
+			if let Backend::SaveAnalysis = self.backend {
+                cmd.arg("-Z").arg("save-analysis");
+            }
 		}
 		DefaultExecutor.exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
