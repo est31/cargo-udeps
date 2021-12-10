@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.25 - December 10, 2021
+
+- Update cargo dependency to 0.58.0.
+- Avoid using the `-Z save-analysis` flag unless really needed. Contributed by [@pvdrz](https://github.com/pvdrz)
+
 ## Release 0.1.24 - October 22, 2021
 
 - Update cargo dependency to 0.57.0.
