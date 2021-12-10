@@ -98,9 +98,9 @@ checksum = "6c58ec36aac5066d5ca17df51b3e70279f5670a72102f5752cb7e7c856adfc70"
 
 [[package]]
 name = "cargo"
-version = "0.57.0"
+version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "519db9ad1bc3bf61f2e753cc204ac37903cf0f33f551a03c260208271c1f875b"
+checksum = "cab77eea837b09297f6ad70921e465d77b60eb10380505abc02bd6e66b653704"
 dependencies = [
  "anyhow",
  "atty",
@@ -135,6 +135,7 @@ dependencies = [
  "num_cpus",
  "opener",
  "openssl",
+ "os_info",
  "percent-encoding",
  "rustc-workspace-hack",
  "rustfix",
@@ -786,6 +787,17 @@ dependencies = [
  "openssl-src",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "os_info"
+version = "3.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5501659840950e918d046ad97ebe9702cbb4ec0097e47dbd27abf7692223181"
+dependencies = [
+ "log",
+ "serde",
+ "winapi",
 ]
 
 [[package]]
