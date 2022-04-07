@@ -25,8 +25,7 @@ use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
-use structopt::clap::{AppSettings, ArgMatches};
+use clap::{AppSettings, ArgMatches, StructOpt};
 
 use crate::defs::CrateSaveAnalysis;
 
