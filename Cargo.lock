@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-udeps"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "ansi_term",
  "anyhow",
