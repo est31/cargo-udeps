@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.28 - April 13, 2022
+
+- Update cargo dependency to 0.61.0
+
 ## Release 0.1.27 - February 25, 2022
 
 - Update cargo dependency to 0.60.0
