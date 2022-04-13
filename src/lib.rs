@@ -25,14 +25,14 @@ use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::{Deserialize, Serialize};
-use clap::{AppSettings, ArgMatches, StructOpt};
+use clap::{AppSettings, ArgMatches, CommandFactory, StructOpt};
 
 use crate::defs::CrateSaveAnalysis;
 
 pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Config, stdout: W) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
-	let Opt::Udeps(opt) = Opt::from_iter_safe(&args)?;
-	let clap_matches = Opt::clap().get_matches_from_safe(args)?;
+	let Opt::Udeps(opt) = Opt::try_parse_from(&args)?;
+	let clap_matches = Opt::command().try_get_matches_from(args)?;
 	match opt.run(config, stdout, clap_matches.subcommand_matches("udeps").unwrap())? {
 		0 => Ok(()),
 		code => Err(CliError::code(code)),
@@ -43,7 +43,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 #[structopt(
 	about,
 	bin_name = "cargo",
-	global_settings(&[AppSettings::DeriveDisplayOrder, AppSettings::UnifiedHelpMessage]),
+	global_setting(AppSettings::DeriveDisplayOrder),
 )]
 enum Opt {
 	#[structopt(
@@ -180,7 +180,7 @@ struct OptUdeps {
 	#[structopt(
 		long,
 		value_name("FMT"),
-		case_insensitive(true),
+		ignore_case(true),
 		possible_values(&["human", "json", "short"]),
 		default_value("human"),
 		help("[cargo] Error format")
@@ -196,7 +196,7 @@ struct OptUdeps {
 	#[structopt(
 		long,
 		value_name("WHEN"),
-		case_insensitive(false),
+		ignore_case(false),
 		possible_values(&["auto", "always", "never"]),
 		help("[cargo] Coloring")
 	)]
