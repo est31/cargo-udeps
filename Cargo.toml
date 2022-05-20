@@ -1,6 +1,6 @@
 [package]
 name = "cargo-udeps"
-version = "0.1.28"
+version = "0.1.29"
 authors = ["est31 <MTest31@outlook.com>", "Ryo Yamashita <qryxip@gmail.com>"]
 description = "Find unused dependencies in Cargo.toml"
 repository = "https://github.com/est31/cargo-udeps"
