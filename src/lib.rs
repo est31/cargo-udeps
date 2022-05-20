@@ -837,13 +837,13 @@ impl DependencyNames {
 				.iter()
 				.find(|t| t.is_lib())
 			{
-				let extern_crate_name = resolve.extern_crate_name(from, to_pkg.package_id(), to_lib)?;
+				let extern_crate_name = resolve.extern_crate_name_and_dep_name(from, to_pkg.package_id(), to_lib)?.0.as_str();
 				let lib_true_snakecased_name = to_lib.crate_name();
 
 				for dep in deps {
 					assert_eq!(dep.package_name(), to_pkg.name());
 					let names = &mut this[dep.kind()];
-					names.by_extern_crate_name.insert(extern_crate_name.clone(), dep.name_in_toml());
+					names.by_extern_crate_name.insert(extern_crate_name, dep.name_in_toml());
 					let r = names.by_package_id.insert(to_pkg.package_id(), dep.name_in_toml());
 					if r.is_some() {
 						shell.warn(format!("duplicate package mentioned in toml {}. {:?}", to_pkg.package_id(), r))?;
@@ -941,7 +941,7 @@ impl IndexMut<dependency::DepKind> for DependencyNames {
 
 #[derive(Debug, Default)]
 struct DependencyNamesValue {
-	by_extern_crate_name :HashMap<String, InternedString>,
+	by_extern_crate_name :HashMap<&'static str, InternedString>,
 	by_lib_true_snakecased_name :HashMap<String, HashSet<InternedString>>,
 	by_package_id :HashMap<PackageId, InternedString>,
 	non_lib :HashSet<InternedString>,

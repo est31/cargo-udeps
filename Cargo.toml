@@ -17,7 +17,7 @@ vendored-openssl = ["cargo/vendored-openssl"]
 
 [dependencies]
 ansi_term = "0.12"
-cargo = "0.61"
+cargo = "0.62"
 cargo-util = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
