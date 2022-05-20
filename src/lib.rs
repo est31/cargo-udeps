@@ -223,6 +223,12 @@ struct OptUdeps {
 		help("Backend to use for determining unused deps"))
 	]
 	backend :Backend,
+	#[structopt(
+		long,
+		help("Backend to use for determining unused deps"))
+	]
+	// This is needed because the keep-going flag is asked about by cargo code.
+	keep_going :bool,
 }
 
 impl OptUdeps {
