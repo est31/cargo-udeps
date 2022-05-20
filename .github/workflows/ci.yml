@@ -70,7 +70,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose
+          args: --verbose --locked
 
       # `locked`, `avoid-dev-deps`
       - name: '`cargo install --debug --locked`'
