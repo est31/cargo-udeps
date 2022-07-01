@@ -140,7 +140,12 @@ jobs:
             zipinfo "$ASSET"
           else
             ASSET="./$ASSET_STEM.tar.gz"
-            tar -czvf "$ASSET" "./$ASSET_STEM"
+            if ${{ runner.os == 'macOS' }}; then
+              tar=gtar
+            else
+              tar=tar
+            fi
+            "$tar" -czvf "$ASSET" "./$ASSET_STEM"
           fi
           echo "::set-output name=asset::$ASSET"
         shell: bash
