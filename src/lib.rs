@@ -741,7 +741,7 @@ fn parse_rustc_dep_info(rustc_dep_info :&Path) -> CargoResult<Vec<(String, Vec<S
 }
 
 fn cmd_info(id :PackageId, custom_build :bool, cmd :&ProcessBuilder) -> CargoResult<CmdInfo> {
-	let mut args_iter = cmd.get_args().iter();
+	let mut args_iter = cmd.get_args();
 	let mut crate_name = None;
 	let mut crate_type = None;
 	let mut extra_filename = None;
