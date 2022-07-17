@@ -29,10 +29,11 @@ cargo install --git https://github.com/est31/cargo-udeps --locked
 
 #### Dedicated packages
 
-Some GNU/Linux distros have packaged `cargo-udeps`:
+Some package managers have packaged `cargo-udeps`:
 
 * Nix/Nix OS: `cargo-udeps`
 * Arch Linux: `pacman -S cargo-udeps`
+* Homebrew: `brew install cargo-udeps`
 
 ### Usage
 
