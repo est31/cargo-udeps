@@ -333,14 +333,25 @@ impl OptUdeps {
 			lib_stem_to_pkg_id.insert(lib_stem, cmd_info.pkg);
 		}
 		enum BackendData {
-			SaveAnalysis(CrateSaveAnalysis),
+			SaveAnalysis {
+				analysis :CrateSaveAnalysis,
+				ref_krate_ids :HashSet<u32>
+			},
 			Depinfo(DepInfo),
 		}
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let backend_data = match self.backend {
 				Backend::SaveAnalysis => {
 					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
-					BackendData::SaveAnalysis(analysis)
+					let ref_krate_ids = analysis
+						.refs
+						.iter()
+						.map(|r#ref| r#ref.ref_id.krate)
+						.collect();
+					BackendData::SaveAnalysis {
+						analysis,
+						ref_krate_ids
+					}
 				},
 				Backend::Depinfo => {
 					let depinfo = cmd_info.get_depinfo(&mut config.shell())?;
@@ -355,17 +366,18 @@ impl OptUdeps {
 					dependencies: &mut HashSet<(PackageId, InternedString)>,
 				| {
 					match &backend_data {
-						BackendData::SaveAnalysis(analysis) => for ext in &analysis.prelude.external_crates {
-                            let is_used = analysis
-                                .refs
-                                .iter()
-                                .any(|r#ref| r#ref.ref_id.krate == ext.num);
-                            if !is_used {
-                                continue;
-                            }
-							if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
-								for dependency_name in dependency_names {
-									used_dependencies.insert((cmd_info.pkg, *dependency_name));
+						BackendData::SaveAnalysis {
+							analysis,
+							ref_krate_ids,
+						} => {
+							for ext in &analysis.prelude.external_crates {
+								if !ref_krate_ids.contains(&ext.num) {
+									continue;
+								}
+								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
+									for dependency_name in dependency_names {
+										used_dependencies.insert((cmd_info.pkg, *dependency_name));
+									}
 								}
 							}
 						},
