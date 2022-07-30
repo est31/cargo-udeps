@@ -356,6 +356,13 @@ impl OptUdeps {
 				| {
 					match &backend_data {
 						BackendData::SaveAnalysis(analysis) => for ext in &analysis.prelude.external_crates {
+                            let is_used = analysis
+                                .refs
+                                .iter()
+                                .any(|r#ref| r#ref.ref_id.krate == ext.num);
+                            if !is_used {
+                                continue;
+                            }
 							if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
 								for dependency_name in dependency_names {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
