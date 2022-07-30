@@ -618,7 +618,7 @@ impl Executor for Exec {
 		if is_workspace_member {
 			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
-				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
+				r#"{ "reachable_only": false, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			if let Backend::SaveAnalysis = self.backend {
 				cmd.arg("-Z").arg("save-analysis");
 			}
