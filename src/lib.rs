@@ -250,11 +250,7 @@ impl OptUdeps {
 		}
 
 		config.configure(
-			match self.verbose {
-				0 => 0,
-				1 => 1,
-				_ => 2,
-			},
+			self.verbose.max(0).min(2) as u32,
 			self.quiet,
 			self.color.as_deref(),
 			self.frozen,
