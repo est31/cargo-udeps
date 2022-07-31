@@ -411,9 +411,10 @@ impl OptUdeps {
 							// First, we continue if there is no - in the filename.
 							// it's likely a source file or some other artifact we aren't
 							// interested in. This is obviously only a stupid heuristic.
-							if !fs.contains('-') {
-								continue;
-							}
+							let lib_name = match fs.split_once('-') {
+								None => continue,
+								Some((lib_name, _)) => lib_name
+							};
 
 							// The metadata hash is not available through cargo's api
 							// outside of the Executor trait impl. We do our best to obtain
@@ -430,7 +431,6 @@ impl OptUdeps {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
 							} else {
-								let lib_name = fs.split('-').next().unwrap();
 								// TODO this is a hack as we unconditionally strip the prefix.
 								// It won't work for proc macro crates that start with "lib".
 								// See maybe_lib in the code above.
