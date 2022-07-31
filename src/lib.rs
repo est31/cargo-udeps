@@ -230,7 +230,8 @@ struct OptUdeps {
 	keep_going :bool,
 	#[structopt(
 		long,
-		help("Ignore unused dependencies that gets used transitively by main dependencies"),
+		help("Ignore unused dependencies that gets used transitively by main dependencies. \
+			  Works only with 'save-analysis' backend"),
 	)]
 	hide_unused_transitive :bool,
 }
