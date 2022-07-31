@@ -729,7 +729,7 @@ impl DepInfo {
 				v.file_name() == Some(&std::ffi::OsString::from(&self.f_name))
 			})
 			.map(|v| v.1.clone())
-			.unwrap_or(vec![])
+			.unwrap_or_default()
 	}
 }
 
