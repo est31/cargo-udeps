@@ -228,6 +228,11 @@ struct OptUdeps {
 		help("Needed because the keep-going flag is asked about by cargo code"))
 	]
 	keep_going :bool,
+	#[structopt(
+		long,
+		help("Ignore unused dependencies that gets used transitively by main dependencies"),
+	)]
+	hide_unused_transitive :bool,
 }
 
 impl OptUdeps {
@@ -334,7 +339,7 @@ impl OptUdeps {
 		enum BackendData {
 			SaveAnalysis {
 				analysis :CrateSaveAnalysis,
-				ref_krate_ids :HashSet<u32>
+				ref_krate_ids :Option<HashSet<u32>>
 			},
 			Depinfo(DepInfo),
 		}
@@ -342,11 +347,16 @@ impl OptUdeps {
 			let backend_data = match self.backend {
 				Backend::SaveAnalysis => {
 					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
-					let ref_krate_ids = analysis
-						.refs
-						.iter()
-						.map(|r#ref| r#ref.ref_id.krate)
-						.collect();
+					let ref_krate_ids = match self.hide_unused_transitive {
+						true => None,
+						false => Some(
+							analysis
+								.refs
+								.iter()
+								.map(|r#ref| r#ref.ref_id.krate)
+								.collect(),
+						),
+					};
 					BackendData::SaveAnalysis {
 						analysis,
 						ref_krate_ids
@@ -370,7 +380,10 @@ impl OptUdeps {
 							ref_krate_ids,
 						} => {
 							for ext in &analysis.prelude.external_crates {
-								if !ref_krate_ids.contains(&ext.num) {
+								let id_used_in_refs = ref_krate_ids
+									.as_ref()
+									.map_or(true, |ids| ids.contains(&ext.num));
+								if !id_used_in_refs {
 									continue;
 								}
 								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
