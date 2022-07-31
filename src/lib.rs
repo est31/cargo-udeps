@@ -434,11 +434,7 @@ impl OptUdeps {
 								// TODO this is a hack as we unconditionally strip the prefix.
 								// It won't work for proc macro crates that start with "lib".
 								// See maybe_lib in the code above.
-								let lib_name = if lib_name.starts_with("lib") {
-										&lib_name["lib".len()..]
-								} else {
-										&lib_name[..]
-								};
+								let lib_name = lib_name.strip_prefix("lib").unwrap_or(lib_name);
 								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
 									for dependency_name in dependency_names {
 										used_dependencies.insert((cmd_info.pkg, *dependency_name));
