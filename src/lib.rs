@@ -354,7 +354,7 @@ impl OptUdeps {
 							analysis
 								.refs
 								.iter()
-								.map(|r#ref| r#ref.ref_id.krate)
+								.map(|ref_| ref_.ref_id.krate)
 								.collect(),
 						),
 					};
