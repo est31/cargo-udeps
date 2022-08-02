@@ -225,10 +225,15 @@ struct OptUdeps {
 	backend :Backend,
 	#[structopt(
 		long,
-		help("Backend to use for determining unused deps"))
+		help("Needed because the keep-going flag is asked about by cargo code"))
 	]
-	// This is needed because the keep-going flag is asked about by cargo code.
 	keep_going :bool,
+	#[structopt(
+		long,
+		help("Ignore unused dependencies that get used transitively by main dependencies. \
+			  Works only with 'save-analysis' backend"),
+	)]
+	hide_unused_transitive :bool,
 }
 
 impl OptUdeps {
@@ -250,11 +255,7 @@ impl OptUdeps {
 		}
 
 		config.configure(
-			match self.verbose {
-				0 => 0,
-				1 => 1,
-				_ => 2,
-			},
+			self.verbose.max(0).min(2) as u32,
 			self.quiet,
 			self.color.as_deref(),
 			self.frozen,
@@ -337,14 +338,30 @@ impl OptUdeps {
 			lib_stem_to_pkg_id.insert(lib_stem, cmd_info.pkg);
 		}
 		enum BackendData {
-			SaveAnalysis(CrateSaveAnalysis),
+			SaveAnalysis {
+				analysis :CrateSaveAnalysis,
+				ref_krate_ids :Option<HashSet<u32>>
+			},
 			Depinfo(DepInfo),
 		}
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let backend_data = match self.backend {
 				Backend::SaveAnalysis => {
 					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
-					BackendData::SaveAnalysis(analysis)
+					let ref_krate_ids = match self.hide_unused_transitive {
+						true => None,
+						false => Some(
+							analysis
+								.refs
+								.iter()
+								.map(|ref_| ref_.ref_id.krate)
+								.collect(),
+						),
+					};
+					BackendData::SaveAnalysis {
+						analysis,
+						ref_krate_ids
+					}
 				},
 				Backend::Depinfo => {
 					let depinfo = cmd_info.get_depinfo(&mut config.shell())?;
@@ -359,10 +376,21 @@ impl OptUdeps {
 					dependencies: &mut HashSet<(PackageId, InternedString)>,
 				| {
 					match &backend_data {
-						BackendData::SaveAnalysis(analysis) => for ext in &analysis.prelude.external_crates {
-							if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
-								for dependency_name in dependency_names {
-									used_dependencies.insert((cmd_info.pkg, *dependency_name));
+						BackendData::SaveAnalysis {
+							analysis,
+							ref_krate_ids,
+						} => {
+							for ext in &analysis.prelude.external_crates {
+								let id_used_in_refs = ref_krate_ids
+									.as_ref()
+									.map_or(true, |ids| ids.contains(&ext.num));
+								if !id_used_in_refs {
+									continue;
+								}
+								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
+									for dependency_name in dependency_names {
+										used_dependencies.insert((cmd_info.pkg, *dependency_name));
+									}
 								}
 							}
 						},
@@ -384,9 +412,10 @@ impl OptUdeps {
 							// First, we continue if there is no - in the filename.
 							// it's likely a source file or some other artifact we aren't
 							// interested in. This is obviously only a stupid heuristic.
-							if !fs.contains('-') {
-								continue;
-							}
+							let lib_name = match fs.split_once('-') {
+								None => continue,
+								Some((lib_name, _)) => lib_name
+							};
 
 							// The metadata hash is not available through cargo's api
 							// outside of the Executor trait impl. We do our best to obtain
@@ -403,15 +432,10 @@ impl OptUdeps {
 									used_dependencies.insert((cmd_info.pkg, *dependency_name));
 								}
 							} else {
-								let lib_name = fs.split('-').next().unwrap();
 								// TODO this is a hack as we unconditionally strip the prefix.
 								// It won't work for proc macro crates that start with "lib".
 								// See maybe_lib in the code above.
-								let lib_name = if lib_name.starts_with("lib") {
-										&lib_name["lib".len()..]
-								} else {
-										&lib_name[..]
-								};
+								let lib_name = lib_name.strip_prefix("lib").unwrap_or(lib_name);
 								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(lib_name) {
 									for dependency_name in dependency_names {
 										used_dependencies.insert((cmd_info.pkg, *dependency_name));
@@ -622,7 +646,7 @@ impl Executor for Exec {
 		if is_workspace_member {
 			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
-				r#"{ "reachable_only": true, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
+				r#"{ "reachable_only": false, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
 			if let Backend::SaveAnalysis = self.backend {
 				cmd.arg("-Z").arg("save-analysis");
 			}
@@ -705,7 +729,7 @@ impl DepInfo {
 				v.file_name() == Some(&std::ffi::OsString::from(&self.f_name))
 			})
 			.map(|v| v.1.clone())
-			.unwrap_or(vec![])
+			.unwrap_or_default()
 	}
 }
 
