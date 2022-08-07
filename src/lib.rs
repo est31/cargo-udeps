@@ -48,6 +48,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 enum Opt {
 	#[structopt(
 		about,
+                version,
 		name = "udeps",
 		after_help(
 			"\
