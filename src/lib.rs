@@ -231,10 +231,10 @@ struct OptUdeps {
 	keep_going :bool,
 	#[structopt(
 		long,
-		help("Ignore unused dependencies that get used transitively by main dependencies. \
+		help("Show unused dependencies that get used transitively by main dependencies. \
 			  Works only with 'save-analysis' backend"),
 	)]
-	hide_unused_transitive :bool,
+	show_unused_transitive :bool,
 }
 
 impl OptUdeps {
@@ -349,15 +349,15 @@ impl OptUdeps {
 			let backend_data = match self.backend {
 				Backend::SaveAnalysis => {
 					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
-					let ref_krate_ids = match self.hide_unused_transitive {
-						true => None,
-						false => Some(
+					let ref_krate_ids = match self.show_unused_transitive {
+						true => Some(
 							analysis
 								.refs
 								.iter()
 								.map(|ref_| ref_.ref_id.krate)
 								.collect(),
 						),
+						false => None,
 					};
 					BackendData::SaveAnalysis {
 						analysis,

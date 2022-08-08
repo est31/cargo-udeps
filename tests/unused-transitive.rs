@@ -21,13 +21,14 @@ fn main() {
 "#;
 
 #[test]
-fn unused_transitive() -> CargoResult<()> {
+fn show_unused_transitive() -> CargoResult<()> {
 	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_unused_transitive")?
+		Runner::new("cargo_udeps_test_show_unused_transitive")?
 			.cargo_toml(CARGO_TOML)?
 			.dir("./src")?
 			.file("./src/lib.rs", LIB_RS)?
 			.arg("--all-targets")
+			.arg("--show-unused-transitive")
 			.run()?;
 	assert_eq!(1, code);
 	assert_eq!(
@@ -45,14 +46,13 @@ Note: They might be false-positive.
 }
 
 #[test]
-fn hide_unused_transitive() -> CargoResult<()> {
+fn unused_transitive() -> CargoResult<()> {
 	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_hide_unused_transitive")?
+		Runner::new("cargo_udeps_test_unused_transitive")?
 			.cargo_toml(CARGO_TOML)?
 			.dir("./src")?
 			.file("./src/lib.rs", LIB_RS)?
 			.arg("--all-targets")
-			.arg("--hide-unused-transitive")
 			.run()?;
 	assert_eq!(0, code);
 	assert_eq!("All deps seem to have been used.\n", stdout_masked);
