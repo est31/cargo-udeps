@@ -88,6 +88,10 @@ You are welcome to expand it:
 * https://github.com/hendrikmaus/helm-templexer/pull/85
 * https://github.com/itchysats/itchysats/commit/99076ecb907b3bfc5f31ffcdad9716df1869c8f7
 
+### Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ### License
 [license]: #license
 
