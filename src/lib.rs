@@ -147,7 +147,7 @@ struct OptUdeps {
 	bench: Vec<String>,
 	#[structopt(long, help("[cargo] Check all benches"))]
 	benches: bool,
-	#[structopt(long, help("[cargo] Check all targets"))]
+	#[structopt(long, help("[cargo] Check all targets"), value_parser = clap::value_parser!(bool))]
 	all_targets: bool,
 	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"))]
 	release: bool,
