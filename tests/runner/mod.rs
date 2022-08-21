@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{Command, Output};
