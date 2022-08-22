@@ -75,7 +75,7 @@ The `--profile test` flag can be used to check unit tests with the
 #[derive(StructOpt, Debug)]
 #[allow(dead_code)]
 struct OptUdeps {
-	#[structopt(short, long, help("[cargo] No output printed to stdout"))]
+	#[structopt(short, long, help("[cargo] No output printed to stdout"), value_parser = clap::value_parser!(bool))]
 	quiet: bool,
 	#[structopt(
 		short,
@@ -86,9 +86,9 @@ struct OptUdeps {
 		help("[cargo] Package(s) to check")
 	)]
 	package: Vec<String>,
-	#[structopt(long, help("[cargo] Alias for --workspace (deprecated)"))]
+	#[structopt(long, help("[cargo] Alias for --workspace (deprecated)"), value_parser = clap::value_parser!(bool))]
 	all: bool,
-	#[structopt(long, help("[cargo] Check all packages in the workspace"))]
+	#[structopt(long, help("[cargo] Check all packages in the workspace"), value_parser = clap::value_parser!(bool))]
 	workspace: bool,
 	#[structopt(
 		long,
@@ -105,7 +105,7 @@ struct OptUdeps {
 		help("[cargo] Number of parallel jobs, defaults to # of CPUs")
 	)]
 	jobs: Option<String>,
-	#[structopt(long, help("[cargo] Check only this package's library"))]
+	#[structopt(long, help("[cargo] Check only this package's library"), value_parser = clap::value_parser!(bool))]
 	lib: bool,
 	#[structopt(
 		long,
@@ -115,7 +115,7 @@ struct OptUdeps {
 		help("[cargo] Check only the specified binary")
 	)]
 	bin: Vec<String>,
-	#[structopt(long, help("[cargo] Check all binaries"))]
+	#[structopt(long, help("[cargo] Check all binaries"), value_parser = clap::value_parser!(bool))]
 	bins: bool,
 	#[structopt(
 		long,
@@ -125,7 +125,7 @@ struct OptUdeps {
 		help("[cargo] Check only the specified example")
 	)]
 	example: Vec<String>,
-	#[structopt(long, help("[cargo] Check all examples"))]
+	#[structopt(long, help("[cargo] Check all examples"), value_parser = clap::value_parser!(bool))]
 	examples: bool,
 	#[structopt(
 		long,
@@ -135,7 +135,7 @@ struct OptUdeps {
 		help("[cargo] Check only the specified test target")
 	)]
 	test: Vec<String>,
-	#[structopt(long, help("[cargo] Check all tests"))]
+	#[structopt(long, help("[cargo] Check all tests"), value_parser = clap::value_parser!(bool))]
 	tests: bool,
 	#[structopt(
 		long,
@@ -145,11 +145,11 @@ struct OptUdeps {
 		help("[cargo] Check only the specified bench target")
 	)]
 	bench: Vec<String>,
-	#[structopt(long, help("[cargo] Check all benches"))]
+	#[structopt(long, help("[cargo] Check all benches"), value_parser = clap::value_parser!(bool))]
 	benches: bool,
 	#[structopt(long, help("[cargo] Check all targets"), value_parser = clap::value_parser!(bool))]
 	all_targets: bool,
-	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"))]
+	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"), value_parser = clap::value_parser!(bool))]
 	release: bool,
 	#[structopt(
 		long,
@@ -164,9 +164,9 @@ struct OptUdeps {
 		help("[cargo] Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
-	#[structopt(long, help("[cargo] Activate all available features"))]
+	#[structopt(long, help("[cargo] Activate all available features"), value_parser = clap::value_parser!(bool))]
 	all_features: bool,
-	#[structopt(long, help("[cargo] Do not activate the `default` feature"))]
+	#[structopt(long, help("[cargo] Do not activate the `default` feature"), value_parser = clap::value_parser!(bool))]
 	no_default_features: bool,
 	#[structopt(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
 	target: Option<String>,
@@ -202,11 +202,11 @@ struct OptUdeps {
 		help("[cargo] Coloring")
 	)]
 	color: Option<String>,
-	#[structopt(long, help("[cargo] Require Cargo.lock and cache are up to date"))]
+	#[structopt(long, help("[cargo] Require Cargo.lock and cache are up to date"), value_parser = clap::value_parser!(bool))]
 	frozen: bool,
-	#[structopt(long, help("[cargo] Require Cargo.lock is up to date"))]
+	#[structopt(long, help("[cargo] Require Cargo.lock is up to date"), value_parser = clap::value_parser!(bool))]
 	locked: bool,
-	#[structopt(long, help("[cargo] Run without accessing the network"))]
+	#[structopt(long, help("[cargo] Run without accessing the network"), value_parser = clap::value_parser!(bool))]
 	offline: bool,
 	#[structopt(
 		long,
@@ -226,13 +226,15 @@ struct OptUdeps {
 	backend :Backend,
 	#[structopt(
 		long,
-		help("Needed because the keep-going flag is asked about by cargo code"))
-	]
+		help("Needed because the keep-going flag is asked about by cargo code"),
+		value_parser = clap::value_parser!(bool),
+	)]
 	keep_going :bool,
 	#[structopt(
 		long,
 		help("Show unused dependencies that get used transitively by main dependencies. \
 			  Works only with 'save-analysis' backend"),
+		value_parser = clap::value_parser!(bool),
 	)]
 	show_unused_transitive :bool,
 }
