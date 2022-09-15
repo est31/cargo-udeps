@@ -28,6 +28,8 @@ fn show_unused_transitive() -> CargoResult<()> {
 			.dir("./src")?
 			.file("./src/lib.rs", LIB_RS)?
 			.arg("--all-targets")
+			.arg("--backend")
+			.arg("save-analysis")
 			.arg("--show-unused-transitive")
 			.run()?;
 	assert_eq!(1, code);

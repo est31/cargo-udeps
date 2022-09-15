@@ -219,7 +219,7 @@ struct OptUdeps {
 	#[structopt(
 		long,
 		value_name("BACKEND"),
-		default_value("save-analysis"),
+		default_value("depinfo"),
 		possible_values(Backend::VARIANTS),
 		help("Backend to use for determining unused deps"))
 	]
