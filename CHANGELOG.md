@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.33 - September 15, 2022
+
+- Change default backend from `save-analysis` to `depinfo` in the wake of [save-analysis removal](https://github.com/rust-lang/rust/pull/101841).
+
 ## Release 0.1.32 - August 22, 2022
 
 - Fix [type casting issue](https://github.com/est31/cargo-udeps/issues/135) introduced by the cargo update that broke many command line flags.
