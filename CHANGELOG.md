@@ -11,7 +11,7 @@
 ## Release 0.1.31 - August 22, 2022
 
 - Update cargo dependency to 0.64.0
-- A new backend that supports transitive dependencies but ignores macro usages. Contributed by [@artslob](https://github.com/artslob)
+- A new backend flag that supports transitive dependencies but ignores macro usages. Contributed by [@artslob](https://github.com/artslob)
 
 ## Release 0.1.30 - July 06, 2022
 
