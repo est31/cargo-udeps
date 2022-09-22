@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.34 - September 22, 2022
+
+- Update cargo dependency to 0.65.0
+
 ## Release 0.1.33 - September 15, 2022
 
 - Change default backend from `save-analysis` to `depinfo` in the wake of [save-analysis removal](https://github.com/rust-lang/rust/pull/101841).
