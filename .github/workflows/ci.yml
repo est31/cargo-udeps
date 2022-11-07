@@ -17,6 +17,7 @@ jobs:
           - stable-x86_64-pc-windows-msvc
           - stable-x86_64-apple-darwin
           - stable-x86_64-unknown-linux-gnu
+          - stable-x86_64-unknown-linux-musl
           - beta-x86_64-unknown-linux-gnu
           - nightly-x86_64-unknown-linux-gnu
         include:
@@ -28,6 +29,9 @@ jobs:
             os: macos-latest
           - toolchain: stable-x86_64-unknown-linux-gnu
             toolchain_nightly: nightly-2022-05-14-x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+          - toolchain: stable-x86_64-unknown-linux-musl
+            toolchain_nightly: nightly-2022-05-14-x86_64-unknown-linux-musl
             os: ubuntu-18.04
           - toolchain: beta-x86_64-unknown-linux-gnu
             toolchain_nightly: nightly-2022-05-14-x86_64-unknown-linux-gnu
@@ -94,12 +98,15 @@ jobs:
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
           - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
         include:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: x86_64-unknown-linux-gnu
+            os: ubuntu-18.04
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-18.04
 
     name: GitHub Release (${{ matrix.target }})
