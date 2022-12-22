@@ -25,7 +25,7 @@ use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::{Deserialize, Serialize};
-use clap::{AppSettings, ArgMatches, CommandFactory, StructOpt};
+use clap::{ArgAction, ArgMatches, CommandFactory, Parser};
 
 use crate::defs::CrateSaveAnalysis;
 
@@ -39,14 +39,13 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 	}
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser, Debug)]
+#[command(
 	about,
 	bin_name = "cargo",
-	global_setting(AppSettings::DeriveDisplayOrder),
 )]
 enum Opt {
-	#[structopt(
+	#[command(
 		about,
                 version,
 		name = "udeps",
@@ -72,165 +71,165 @@ The `--profile test` flag can be used to check unit tests with the
 	Udeps(OptUdeps),
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 #[allow(dead_code)]
 struct OptUdeps {
-	#[structopt(short, long, help("[cargo] No output printed to stdout"), value_parser = clap::value_parser!(bool))]
+	#[arg(short, long, help("[cargo] No output printed to stdout"), value_parser = clap::value_parser!(bool))]
 	quiet: bool,
-	#[structopt(
+	#[arg(
 		short,
 		long,
 		value_name("SPEC"),
-		min_values(1),
+		num_args(1..),
 		number_of_values(1),
 		help("[cargo] Package(s) to check")
 	)]
 	package: Vec<String>,
-	#[structopt(long, help("[cargo] Alias for --workspace (deprecated)"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Alias for --workspace (deprecated)"), value_parser = clap::value_parser!(bool))]
 	all: bool,
-	#[structopt(long, help("[cargo] Check all packages in the workspace"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all packages in the workspace"), value_parser = clap::value_parser!(bool))]
 	workspace: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("SPEC"),
-		min_values(1),
+		num_args(1..),
 		number_of_values(1),
 		help("[cargo] Exclude packages from the check")
 	)]
 	exclude: Vec<String>,
-	#[structopt(
+	#[arg(
 		short,
 		long,
 		value_name("N"),
 		help("[cargo] Number of parallel jobs, defaults to # of CPUs")
 	)]
 	jobs: Option<String>,
-	#[structopt(long, help("[cargo] Check only this package's library"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check only this package's library"), value_parser = clap::value_parser!(bool))]
 	lib: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("NAME"),
-		min_values(0),
+		num_args(0..),
 		number_of_values(1),
 		help("[cargo] Check only the specified binary")
 	)]
 	bin: Vec<String>,
-	#[structopt(long, help("[cargo] Check all binaries"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all binaries"), value_parser = clap::value_parser!(bool))]
 	bins: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("NAME"),
-		min_values(0),
+		num_args(0..),
 		number_of_values(1),
 		help("[cargo] Check only the specified example")
 	)]
 	example: Vec<String>,
-	#[structopt(long, help("[cargo] Check all examples"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all examples"), value_parser = clap::value_parser!(bool))]
 	examples: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("NAME"),
-		min_values(0),
+		num_args(0..),
 		number_of_values(1),
 		help("[cargo] Check only the specified test target")
 	)]
 	test: Vec<String>,
-	#[structopt(long, help("[cargo] Check all tests"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all tests"), value_parser = clap::value_parser!(bool))]
 	tests: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("NAME"),
-		min_values(0),
+		num_args(0..),
 		number_of_values(1),
 		help("[cargo] Check only the specified bench target")
 	)]
 	bench: Vec<String>,
-	#[structopt(long, help("[cargo] Check all benches"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all benches"), value_parser = clap::value_parser!(bool))]
 	benches: bool,
-	#[structopt(long, help("[cargo] Check all targets"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all targets"), value_parser = clap::value_parser!(bool))]
 	all_targets: bool,
-	#[structopt(long, help("[cargo] Check artifacts in release mode, with optimizations"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check artifacts in release mode, with optimizations"), value_parser = clap::value_parser!(bool))]
 	release: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("PROFILE-NAME"),
 		help("[cargo] Check artifacts with the specified profile")
 	)]
 	profile: Option<String>,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("FEATURES"),
-		min_values(1),
+		num_args(0..),
 		help("[cargo] Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
-	#[structopt(long, help("[cargo] Activate all available features"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Activate all available features"), value_parser = clap::value_parser!(bool))]
 	all_features: bool,
-	#[structopt(long, help("[cargo] Do not activate the `default` feature"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Do not activate the `default` feature"), value_parser = clap::value_parser!(bool))]
 	no_default_features: bool,
-	#[structopt(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
+	#[arg(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
 	target: Option<String>,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("DIRECTORY"),
 		help("[cargo] Directory for all generated artifacts")
 	)]
 	target_dir: Option<PathBuf>,
-	#[structopt(long, value_name("PATH"), help("[cargo] Path to Cargo.toml"))]
+	#[arg(long, value_name("PATH"), help("[cargo] Path to Cargo.toml"))]
 	manifest_path: Option<PathBuf>,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("FMT"),
 		ignore_case(true),
-		possible_values(&["human", "json", "short"]),
+		value_parser(["human", "json", "short"]),
 		default_value("human"),
 		help("[cargo] Error format")
 	)]
 	message_format: Vec<String>,
-	#[structopt(
+	#[arg(
 		short,
 		long,
-		parse(from_occurrences),
+		action = ArgAction::Count,
 		help("[cargo] Use verbose output (-vv very verbose/build.rs output)")
 	)]
 	verbose: u64,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("WHEN"),
 		ignore_case(false),
-		possible_values(&["auto", "always", "never"]),
+		value_parser(["auto", "always", "never"]),
 		help("[cargo] Coloring")
 	)]
 	color: Option<String>,
-	#[structopt(long, help("[cargo] Require Cargo.lock and cache are up to date"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Require Cargo.lock and cache are up to date"), value_parser = clap::value_parser!(bool))]
 	frozen: bool,
-	#[structopt(long, help("[cargo] Require Cargo.lock is up to date"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Require Cargo.lock is up to date"), value_parser = clap::value_parser!(bool))]
 	locked: bool,
-	#[structopt(long, help("[cargo] Run without accessing the network"), value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Run without accessing the network"), value_parser = clap::value_parser!(bool))]
 	offline: bool,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("OUTPUT"),
 		default_value("human"),
-		possible_values(OutputKind::VARIANTS),
+		value_enum,
 		help("Output format"))
 	]
 	output: OutputKind,
-	#[structopt(
+	#[arg(
 		long,
 		value_name("BACKEND"),
 		default_value("depinfo"),
-		possible_values(Backend::VARIANTS),
+		value_enum,
 		help("Backend to use for determining unused deps"))
 	]
 	backend :Backend,
-	#[structopt(
+	#[arg(
 		long,
 		help("Needed because the keep-going flag is asked about by cargo code"),
 		value_parser = clap::value_parser!(bool),
 	)]
 	keep_going :bool,
-	#[structopt(
+	#[arg(
 		long,
 		help("Show unused dependencies that get used transitively by main dependencies. \
 			  Works only with 'save-analysis' backend"),
@@ -1112,14 +1111,10 @@ impl OutcomeUnusedDeps {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum OutputKind {
 	Human,
 	Json,
-}
-
-impl OutputKind {
-	const VARIANTS: &'static [&'static str] = &["human", "json"];
 }
 
 impl FromStr for OutputKind {
@@ -1134,14 +1129,10 @@ impl FromStr for OutputKind {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum Backend {
 	SaveAnalysis,
 	Depinfo,
-}
-
-impl Backend {
-	const VARIANTS :&'static [&'static str] = &["save-analysis", "depinfo"];
 }
 
 impl FromStr for Backend {
