@@ -47,7 +47,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 enum Opt {
 	#[command(
 		about,
-                version,
+		version,
 		name = "udeps",
 		after_help(
 			"\
