@@ -192,7 +192,7 @@ struct OptUdeps {
 		action = ArgAction::Count,
 		help("[cargo] Use verbose output (-vv very verbose/build.rs output)")
 	)]
-	verbose: u64,
+	verbose: u8,
 	#[arg(
 		long,
 		value_name("WHEN"),
