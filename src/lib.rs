@@ -477,12 +477,21 @@ impl OptUdeps {
 
 		let mut outcome = Outcome::default();
 
+		let included_packages = compile_opts.spec.get_packages(&ws)?
+			.iter()
+			.map(|x|x.package_id())
+			.collect::<HashSet<_>>();
 		for (dependencies, used_dependencies, kind) in &[
 			(&normal_dependencies, &used_normal_dev_dependencies, dependency::DepKind::Normal),
 			(&dev_dependencies, &used_normal_dev_dependencies, dependency::DepKind::Development),
 			(&build_dependencies, &used_build_dependencies, dependency::DepKind::Build),
 		] {
 			for &(id, dependency) in *dependencies {
+				// This package may have been explictly excluded via flags.
+				if !included_packages.contains(&id) {
+					continue;
+				}
+
 				use anyhow::Context;
 				let ignore = ws_resolve
 					.pkg_set
