@@ -42,6 +42,7 @@ pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Con
 #[derive(Parser, Debug)]
 #[command(
 	about,
+	name = "cargo",
 	bin_name = "cargo",
 )]
 enum Opt {
