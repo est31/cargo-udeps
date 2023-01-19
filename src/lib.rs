@@ -18,7 +18,7 @@ use cargo::core::resolver::features::{ForceAllTargets, CliFeatures};
 use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
-use cargo::core::{dependency, Package, Resolve, Workspace};
+use cargo::core::{dependency, Package, Resolve, Workspace, Verbosity};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::interning::InternedString;
@@ -1163,17 +1163,20 @@ trait ShellExt {
 
 impl ShellExt for Shell {
 	fn info<T: fmt::Display>(&mut self, message: T) -> CargoResult<()> {
-		self.print_ansi_stderr(
-			format!(
-				"{} {}\n",
-				if self.err_supports_color() {
-					Colour::Cyan.bold().paint("info:").to_string()
-				} else {
-					"info:".to_owned()
-				},
-				message,
+		match self.verbosity() {
+			Verbosity::Quiet => Ok(()),
+			_ => self.print_ansi_stderr(
+				format!(
+					"{} {}\n",
+					if self.err_supports_color() {
+						Colour::Cyan.bold().paint("info:").to_string()
+					} else {
+						"info:".to_owned()
+					},
+					message,
+				)
+				.as_ref(),
 			)
-			.as_ref(),
-		)
+		}
 	}
 }
