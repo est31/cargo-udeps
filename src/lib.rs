@@ -147,7 +147,7 @@ struct OptUdeps {
 	bench: Vec<String>,
 	#[arg(long, help("[cargo] Check all benches"), value_parser = clap::value_parser!(bool))]
 	benches: bool,
-	#[arg(long, help("[cargo] Check all targets"), name = "all-targets", value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Check all targets"), id = "all-targets", value_parser = clap::value_parser!(bool))]
 	all_targets: bool,
 	#[arg(long, help("[cargo] Check artifacts in release mode, with optimizations"), value_parser = clap::value_parser!(bool))]
 	release: bool,
@@ -164,9 +164,9 @@ struct OptUdeps {
 		help("[cargo] Space-separated list of features to activate")
 	)]
 	features: Vec<String>,
-	#[arg(long, help("[cargo] Activate all available features"), name = "all-features", value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Activate all available features"), id = "all-features", value_parser = clap::value_parser!(bool))]
 	all_features: bool,
-	#[arg(long, help("[cargo] Do not activate the `default` feature"), name = "no-default-features", value_parser = clap::value_parser!(bool))]
+	#[arg(long, help("[cargo] Do not activate the `default` feature"), id = "no-default-features", value_parser = clap::value_parser!(bool))]
 	no_default_features: bool,
 	#[arg(long, value_name("TRIPLE"), help("[cargo] Check for the target triple"))]
 	target: Option<String>,
@@ -176,12 +176,12 @@ struct OptUdeps {
 		help("[cargo] Directory for all generated artifacts")
 	)]
 	target_dir: Option<PathBuf>,
-	#[arg(long, value_name("PATH"), name = "manifest-path", help("[cargo] Path to Cargo.toml"))]
+	#[arg(long, value_name("PATH"), id = "manifest-path", help("[cargo] Path to Cargo.toml"))]
 	manifest_path: Option<PathBuf>,
 	#[arg(
 		long,
 		value_name("FMT"),
-		name = "message-format",
+		id = "message-format",
 		ignore_case(true),
 		value_parser(["human", "json", "short"]),
 		default_value("human"),
@@ -227,14 +227,14 @@ struct OptUdeps {
 	backend :Backend,
 	#[arg(
 		long,
-		name = "keep-going",
+		id = "keep-going",
 		help("Needed because the keep-going flag is asked about by cargo code"),
 		value_parser = clap::value_parser!(bool),
 	)]
 	keep_going :bool,
 	#[arg(
 		long,
-		name = "show-unused-transitive",
+		id = "show-unused-transitive",
 		help("Show unused dependencies that get used transitively by main dependencies. \
 			  Works only with 'save-analysis' backend"),
 		value_parser = clap::value_parser!(bool),
