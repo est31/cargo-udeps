@@ -142,7 +142,7 @@ jobs:
             ASSET="./$ASSET_STEM.tar.gz"
             tar -czvf "$ASSET" "./$ASSET_STEM"
           fi
-          echo "::set-output name=asset::$ASSET"
+          echo "name=asset::$ASSET" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: GH Release
