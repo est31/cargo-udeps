@@ -70,7 +70,12 @@ impl Runner {
 
 	pub(crate) fn run(self) -> CargoResult<(i32, String)> {
 		let mut stdout = vec![];
-		let stderr = Shell::from_write(Box::new(vec![]));
+		let stderr = if std::env::var("UDEPS_VERBOSE_TEST").is_ok() {
+			Shell::new()
+		} else {
+			eprintln!("Please set the UDEPS_VERBOSE_TEST environment variable to enable more verbose logging");
+			Shell::from_write(Box::new(vec![]))
+		};
 		let mut config = cargo::Config::new(stderr, self.cwd.path().to_owned(), self.cargo_home.clone());
 		let code = match cargo_udeps::run(self.args.clone(), &mut config, &mut stdout) {
 			Ok(()) => 0,
