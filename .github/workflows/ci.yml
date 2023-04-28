@@ -47,17 +47,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: rust-toolchain ( ${{ matrix.toolchain }} )
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          default: true
-
       - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain_nightly }}
-          default: false
+
+      - name: rust-toolchain ( ${{ matrix.toolchain }} )
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
 
       - name: '`cargo test`'
         run: cargo test --no-fail-fast --verbose --locked
