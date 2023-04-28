@@ -15,7 +15,7 @@ time = "0.1"
 "#;
 
 static LIB_RS :&str = r#"
-fn main() {
+pub fn main() {
     println!("{:?}", chrono::Local::now());
 }
 "#;
