@@ -59,29 +59,21 @@ jobs:
           default: false
 
       - name: '`cargo test`'
-        with:
-          command: cargo test
-          args: --no-fail-fast --verbose --locked
+        run: cargo test --no-fail-fast --verbose --locked
         env:
           CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain_nightly }}
 
       # `locked`, `dev-deps`
       - name: '`cargo build`'
-        with:
-          command: cargo build
-          args: --verbose --locked
+        run: cargo build --verbose --locked
 
       # `locked`, `avoid-dev-deps`
       - name: '`cargo install --debug --locked`'
-        with:
-          command: cargo install
-          args: --path . --debug --verbose --locked
+        run: cargo install --path . --debug --verbose --locked
 
       # `update`, `avoid-dev-deps`
       - name: '`cargo install --debug`'
-        with:
-          command: cargo install
-          args: --path . --debug --verbose
+        run: cargo install --path . --debug --verbose
 
   release:
     strategy:
@@ -115,9 +107,7 @@ jobs:
           default: true
 
       - name: '`cargo build --release`'
-        with:
-          command: cargo build
-          args: --release
+        run: cargo build --release
 
       - name: Create an asset
         id: asset
