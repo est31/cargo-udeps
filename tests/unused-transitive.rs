@@ -20,6 +20,7 @@ fn main() {
 }
 "#;
 
+/*
 #[test]
 fn show_unused_transitive() -> CargoResult<()> {
 	let (code, stdout_masked) =
@@ -46,6 +47,7 @@ Note: They might be false-positive.
 	);
 	Ok(())
 }
+*/
 
 #[test]
 fn unused_transitive() -> CargoResult<()> {

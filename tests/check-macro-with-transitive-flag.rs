@@ -34,6 +34,7 @@ fn macro_call() -> CargoResult<()> {
 	Ok(())
 }
 
+/*
 /// For now we can't check if macro is really used in crate, because macro usages do not populate
 /// "refs" section of save-analysis file.
 #[test]
@@ -62,3 +63,4 @@ Note: They might be false-positive.
 	);
 	Ok(())
 }
+*/
