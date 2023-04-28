@@ -8,6 +8,9 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+**'
   pull_request:
 
+env:
+  RUSTFLAGS: -D warnings
+
 jobs:
   build:
     strategy:
@@ -65,8 +68,6 @@ jobs:
 
       # `locked`, `dev-deps`
       - name: '`cargo build`'
-        env:
-         RUSTFLAGS: -D warnings
         uses: actions-rs/cargo@v1
         with:
           command: build
