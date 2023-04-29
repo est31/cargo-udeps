@@ -1,5 +1,13 @@
 # Changelog
 
+## Release 0.1.36 - April 29, 2023
+
+- Update cargo dependency to 0.70.0
+- Update clap to 0.4.0
+- Respect shell verbosity
+- Make `--exclude` also exclude packages from results
+- CI modernizations
+
 ## Release 0.1.35 - November 3, 2022
 
 - Update cargo dependency to 0.66.0
