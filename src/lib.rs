@@ -177,7 +177,7 @@ struct OptUdeps {
 	)]
 	target_dir: Option<PathBuf>,
 	#[arg(long, value_name("PATH"), id = "manifest-path", help("[cargo] Path to Cargo.toml"))]
-	manifest_path: Option<PathBuf>,
+	manifest_path: Option<String>,
 	#[arg(
 		long,
 		value_name("FMT"),
