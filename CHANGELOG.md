@@ -2,8 +2,8 @@
 
 ## Release 0.1.37 - May 2, 2023
 
-- Fix `--manifest-path` CLI argument not working
-- Fix CI to include assets upon release
+- Fix `--manifest-path` CLI argument not working. Contributed by [@ithinuel](https://github.com/ithinuel)
+- Fix CI to include assets upon release. Contributed by [@AtkinsChang](https://github.com/AtkinsChang)
 
 ## Release 0.1.36 - April 29, 2023
 
