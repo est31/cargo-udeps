@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.37 - May 2, 2023
+
+- Fix `--manifest-path` CLI argument not working
+- Fix CI to include assets upon release
+
 ## Release 0.1.36 - April 29, 2023
 
 - Update cargo dependency to 0.70.0
