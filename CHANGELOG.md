@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.38 - May 2, 2023
+
+- Fix of the fix of the continuous deployment asset inclusion.
+
 ## Release 0.1.37 - May 2, 2023
 
 - Fix `--manifest-path` CLI argument not working. Contributed by [@ithinuel](https://github.com/ithinuel)
