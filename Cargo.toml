@@ -16,7 +16,7 @@ edition = "2021"
 vendored-openssl = ["cargo/vendored-openssl"]
 
 [dependencies]
-ansi_term = "0.12"
+nu-ansi-term = "0.47.0"
 cargo = "0.70"
 cargo-util = "0.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -30,5 +30,3 @@ tempfile = "3.1"
 
 [profile.dev]
 debug = false
-
-
