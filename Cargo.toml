@@ -31,4 +31,8 @@ tempfile = "3.1"
 [profile.dev]
 debug = false
 
-
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
