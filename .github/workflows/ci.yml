@@ -53,6 +53,18 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
+      - name: Configure index cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.cache-suffix }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-index-
+
       - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
         uses: dtolnay/rust-toolchain@master
         with:
@@ -107,6 +119,18 @@ jobs:
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Configure index cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.cache-suffix }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-index-
 
       - name: rust-toolchain
         uses: dtolnay/rust-toolchain@master
