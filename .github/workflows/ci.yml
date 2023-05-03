@@ -60,9 +60,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.cache-suffix }}
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
           restore-keys: |
-            ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-index-
 
       - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
@@ -127,9 +126,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.cache-suffix }}
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
           restore-keys: |
-            ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-
             ${{ runner.os }}-cargo-index-
 
       - name: rust-toolchain
