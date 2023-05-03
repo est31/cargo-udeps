@@ -11,6 +11,9 @@ on:
 env:
   RUSTFLAGS: -D warnings
   UDEPS_VERBOSE_TEST: 1
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  CARGO_INCREMENTAL: 0
 
 jobs:
   build:
@@ -46,6 +49,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
         uses: dtolnay/rust-toolchain@master
@@ -98,6 +104,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: rust-toolchain
         uses: dtolnay/rust-toolchain@master

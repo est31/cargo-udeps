@@ -1,0 +1,26 @@
+name: Cleanup caches for closed PRs
+
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cleanup
+        run: |
+          gh extension install actions/gh-actions-cache
+
+          export REPO="${{ github.repository }}"
+
+          gh pr list --state closed -L 20 --json number --jq '.[]|.number' | (
+              while IFS='$\n' read -r closed_pr; do
+                  BRANCH="refs/pull/${closed_pr}/merge" ./cleanup-cache.sh
+              done
+          )
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
