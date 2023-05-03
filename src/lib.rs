@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::{env, fmt};
 
-use ansi_term::Colour;
+use nu_ansi_term::Color;
 use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
 use cargo::core::resolver::HasDevUnits;
 use cargo::core::resolver::features::{ForceAllTargets, CliFeatures};
@@ -647,7 +647,7 @@ impl Executor for Exec {
 				on_stderr_line(&format!(
 					"{} (!cap_lints_allow)={} differs from is_path={} for id={}",
 					if bt.supports_color {
-						Colour::Yellow.bold().paint("warning:").to_string()
+						Color::Yellow.bold().paint("warning:").to_string()
 					} else {
 						"warning:".to_owned()
 					},
@@ -1172,7 +1172,7 @@ impl ShellExt for Shell {
 				format!(
 					"{} {}\n",
 					if self.err_supports_color() {
-						Colour::Cyan.bold().paint("info:").to_string()
+						Color::Cyan.bold().paint("info:").to_string()
 					} else {
 						"info:".to_owned()
 					},
