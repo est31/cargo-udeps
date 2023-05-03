@@ -105,8 +105,8 @@ jobs:
           toolchain: stable-${{ matrix.target }}
           default: true
 
-      - name: '`cargo build --release`'
-        run: cargo build --release
+      - name: '`cargo build --release --features vendored-openssl`'
+        run: cargo build --release --features vendored-openssl
 
       - name: Create an asset
         id: asset
