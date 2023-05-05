@@ -88,7 +88,9 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            # Use ubuntu-20.04 so that the pre-built artifacts can run on older
+            # image, where they are still using openssl 1
+            os: ubuntu-20.04
 
     name: GitHub Release (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
