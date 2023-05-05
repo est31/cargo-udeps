@@ -78,14 +78,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        target:
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-          - x86_64-unknown-linux-gnu
         include:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
           - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
             os: macos-latest
           - target: x86_64-unknown-linux-gnu
             # Use ubuntu-20.04 so that the pre-built artifacts can run on older
@@ -108,7 +106,7 @@ jobs:
           default: true
 
       - name: '`cargo build --release`'
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create an asset
         id: asset
@@ -116,7 +114,7 @@ jobs:
           if ${{ contains(matrix.target, 'pc-windows') }}; then
             EXE=.exe
           fi
-          EXECUTABLE="./target/release/${GITHUB_REPOSITORY#*/}$EXE"
+          EXECUTABLE="./target/${{ matrix.target }}/release/${GITHUB_REPOSITORY#*/}$EXE"
           ASSET_STEM="${GITHUB_REPOSITORY#*/}-${GITHUB_REF#refs/tags/}-${{ matrix.target }}"
           git archive -o "./$ASSET_STEM.tar" --prefix "$ASSET_STEM/" HEAD
           tar -xf "./$ASSET_STEM.tar"
