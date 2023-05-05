@@ -100,12 +100,6 @@ jobs:
           - target: aarch64-unknown-linux-musl
             os: ubuntu-20.04
             c: true
-          - target: armv7-unknown-linux-gnueabihf
-            os: ubuntu-20.04
-            c: true
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-20.04
-            c: true
 
     name: GitHub Release (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
