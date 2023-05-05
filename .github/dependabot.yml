@@ -1,0 +1,39 @@
+# Dependabot dependency version checks / updates
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    # Workflow files stored in the
+    # default location of `.github/workflows`
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-name: "crypto*"
+        dependency-type: "all"
+      - dependency-name: "curl*"
+        dependency-type: "all"
+      - dependency-name: "libnghttp2*"
+        dependency-type: "all"
+      - dependency-name: "openssl*"
+        dependency-type: "all"
+      - dependency-name: "*git2*"
+        dependency-type: "all"
+      - dependency-name: "http*"
+        dependency-type: "all"
+      - dependency-name: "pasetors*"
+        dependency-type: "all"
+      - dependency-name: "ed25519*"
+        dependency-type: "all"
+      - dependency-name: "orion"
+        dependency-type: "all"
+      - dependency-name: "p384*"
+        dependency-type: "all"
+      - dependency-name: "ecdsa"
+        dependency-type: "all"
+      - dependency-name: "elliptic-curve"
+        dependency-type: "all"
