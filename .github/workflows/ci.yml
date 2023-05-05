@@ -76,7 +76,7 @@ jobs:
 
   release:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-pc-windows-msvc
