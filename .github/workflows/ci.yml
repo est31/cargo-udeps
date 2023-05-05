@@ -92,6 +92,12 @@ jobs:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-20.04
             c: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-20.04
+            c: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-20.04
+            c: true
 
     name: GitHub Release (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
