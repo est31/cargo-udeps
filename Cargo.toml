@@ -14,6 +14,7 @@ edition = "2021"
 
 [features]
 vendored-openssl = ["cargo/vendored-openssl"]
+vendored-libgit2 = ["cargo/vendored-libgit2"]
 
 [dependencies]
 nu-ansi-term = "0.47.0"
