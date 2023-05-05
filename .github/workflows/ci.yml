@@ -112,7 +112,8 @@ jobs:
       - name: rust-toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable-${{ matrix.target }}
+          toolchain: stable
+          targets: ${{ matrix.target }}
           default: true
 
       - name: '`cargo build --release`'
