@@ -129,7 +129,7 @@ jobs:
         if: "matrix.c"
         run: |
           pip3 install cargo-zigbuild
-          cargo zigbuild --release --target ${{ matrix.target }}
+          cargo zigbuild --release --target ${{ matrix.target }} --features vendored-openssl,vendored-libgit2
 
       - name: Create an asset
         id: asset
