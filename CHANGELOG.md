@@ -1,5 +1,11 @@
 # Changelog
 
+## Release 0.1.39 - May 6, 2023
+
+- Build release artifacts for more platforms. Contributed by [@taiki-e](https://github.com/taiki-e)
+- Build release artifacts in `ubuntu-20.04` for better compatibility. Contributed by [@taiki-e](https://github.com/taiki-e)
+- Replace `ansi-term` with `nu-ansi-term`. Contributed by [@tottoto](https://github.com/tottoto)
+
 ## Release 0.1.38 - May 2, 2023
 
 - Fix of the fix of the continuous deployment asset inclusion.
