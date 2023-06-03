@@ -18,7 +18,7 @@ vendored-libgit2 = ["cargo/vendored-libgit2"]
 
 [dependencies]
 nu-ansi-term = "0.47.0"
-cargo = "0.70"
+cargo = "0.71"
 cargo-util = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
