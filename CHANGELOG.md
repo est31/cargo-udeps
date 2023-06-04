@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.40 - June 4, 2023
+
+- Update cargo dependency to 0.71.0
+
 ## Release 0.1.39 - May 6, 2023
 
 - Build release artifacts for more platforms. Contributed by [@NobodyXu](https://github.com/NobodyXu)
