@@ -1873,9 +1873,9 @@ dependencies = [
 
 [[package]]
 name = "orion"
-version = "0.17.4"
+version = "0.17.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbe74a766292f94f7e69db5a7bf010eadd944f24186c463fe578a7e637582066"
+checksum = "b11468cc6afd61a126fe3f91cc4cc8a0dbe7917d0a4b5e8357ba91cc47444462"
 dependencies = [
  "fiat-crypto",
  "subtle",
