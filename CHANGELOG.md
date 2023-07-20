@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.1.41 - July 20, 2023
+
+- Update `cargo` dependency to 0.72.0
+- Update `nu-ansy-term` dependency to 0.48.0
+
 ## Release 0.1.40 - June 4, 2023
 
 - Update cargo dependency to 0.71.0
