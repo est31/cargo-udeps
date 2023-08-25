@@ -12,7 +12,7 @@ name = "non_lib_build_dep"
 version = "0.0.0"
 
 [build-dependencies]
-diffr = "=0.1.3"
+diffr = "=0.1.5"
 "#;
 
 static LIB_RS :&str = "";
