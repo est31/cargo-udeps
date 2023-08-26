@@ -285,7 +285,7 @@ impl OptUdeps {
 		let pc = ProfileChecking::LegacyTestOnly;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
 		let requested_kinds = &compile_opts.build_config.requested_kinds;
-		let mut target_data = RustcTargetData::new(&ws, requested_kinds)?;
+		let target_data = RustcTargetData::new(&ws, requested_kinds)?;
 
 		let cli_features = CliFeatures::from_command_line(
 			&self.features,
@@ -294,7 +294,7 @@ impl OptUdeps {
 		)?;
 		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
-			&mut target_data,
+			&target_data,
 			requested_kinds,
 			&cli_features,
 			&Packages::All.to_package_id_specs(&ws)?,
