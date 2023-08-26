@@ -189,9 +189,9 @@ checksum = "a3e368af43e418a04d52505cf3dbc23dda4e3407ae2fa99fd0e4f308ce546acc"
 
 [[package]]
 name = "cargo"
-version = "0.73.0"
+version = "0.73.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34a16bd56ebd2e99fdb2a5fc4c520fb7dca5db914ef77d356bfe1257aef813e4"
+checksum = "77a6fe1f5394d14b81d2f3f605832a3ce35ed0bf120bc7ef437ce27fd4929c6a"
 dependencies = [
  "anyhow",
  "base64",
@@ -278,7 +278,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "windows-sys 0.48.0",
 ]
 
 [[package]]

@@ -18,24 +18,12 @@ vendored-libgit2 = ["cargo/vendored-libgit2"]
 
 [dependencies]
 nu-ansi-term = "0.49.0"
-cargo = "0.73"
+cargo = "0.73.1"
 cargo-util = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
-
-# Needed for windows build support with cargo 0.73
-[target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.48"
-features = [
-  "Win32_System_IO",
-  "Win32_Foundation",
-  "Win32_Storage_FileSystem",
-  "Win32_System_Console",
-  "Win32_System_Threading",
-  "Win32_System_JobObjects",
-]
 
 [dev-dependencies]
 pretty_assertions = "1.0"
