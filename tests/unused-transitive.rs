@@ -10,7 +10,7 @@ static CARGO_TOML :&str = r#"[workspace]
 name = "unused_transitive"
 version = "0.0.1"
 [dependencies]
-chrono = "0.4"
+chrono = "=0.4.0"
 time = "0.1"
 "#;
 
