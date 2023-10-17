@@ -44,6 +44,17 @@ cargo +nightly udeps
 It either prints out a "unused crates" line listing the crates,
 or it prints out a line saying that no crates were unused.
 
+### pre-commit
+
+You can use it as [pre-commit](https://pre-commit.com/) hook:
+
+```yaml
+- repo: https://github.com/est31/cargo-udeps
+  rev: v0.1.47
+  hooks:
+  - id: udeps
+```
+
 ## Ignoring some of the dependencies
 
 To ignore some of the dependencies, add `package.metadata.cargo-udeps.ignore` to `Cargo.toml`.

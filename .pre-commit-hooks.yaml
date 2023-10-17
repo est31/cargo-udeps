@@ -1,0 +1,8 @@
+- id: udeps
+  name: udeps
+  description: Find unused dependencies.
+  entry: cargo +nightly udeps
+  language: system
+  files: \.(lock|rs|toml)$
+  args: []
+  pass_filenames: false
