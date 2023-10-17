@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.43 - October 17, 2023
+
+- Update `cargo` dependency to 0.74.0
+
 ## Release 0.1.42 - August 27, 2023
 
 - Update `cargo` dependency to 0.73.1
