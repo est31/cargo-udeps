@@ -479,6 +479,20 @@ impl OptUdeps {
 			}
 		}
 
+		use anyhow::Context;
+		let workspace_ignore = ws
+			.custom_metadata()
+			.map::<CargoResult<_>, _>(|workspace_metadata| {
+				let PackageMetadata {
+					cargo_udeps: PackageMetadataCargoUdeps { ignore },
+				} = workspace_metadata
+					.clone()
+					.try_into()
+					.context("could not parse `workspace.metadata.cargo-udeps`")?;
+					Ok(ignore)
+			})
+			.transpose()?;
+
 		let mut outcome = Outcome::default();
 
 		let included_packages = compile_opts.spec.get_packages(&ws)?
@@ -496,7 +510,6 @@ impl OptUdeps {
 					continue;
 				}
 
-				use anyhow::Context;
 				let ignore = ws_resolve
 					.pkg_set
 					.get_one(id)?
@@ -514,7 +527,9 @@ impl OptUdeps {
 					.transpose()?;
 
 				if !used_dependencies.contains(&(id, dependency)) {
-					if ignore.map_or(false, |ignore| ignore.contains(*kind, dependency)) {
+					if ignore.map_or(false, |ignore| ignore.contains(*kind, dependency)) ||
+						workspace_ignore.as_ref().map_or(false, |ignore| ignore.contains(*kind, dependency))
+					{
 						config.shell().info(format_args!("Ignoring `{}` ({:?})", dependency, kind))?;
 					} else {
 						outcome
