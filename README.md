@@ -58,6 +58,9 @@ normal = ["if_chain"]
 if_chain = "1.0.0" # Used only in doc-tests, which `cargo-udeps` cannot check.
 ```
 
+Alternatively, add dependencies to `workspace.metadata.cargo-udeps.ignore` in the
+workpace `Cargo.toml` to ignore them in all packages in the workspace.
+
 ## Known bugs
 
 * Some unused crates might not be detected.
