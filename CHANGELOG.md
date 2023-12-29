@@ -3,6 +3,7 @@
 ## Release 0.1.45 - December 29, 2023
 
 - Update `cargo` dependency to 0.76
+- Support ignoring dependencies across entire workspace. Contributed by [@cmtm](https://github.com/cmtm).
 
 ## Release 0.1.44 - November 23, 2023
 
