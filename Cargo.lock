@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-udeps"
-version = "0.1.45"
+version = "0.1.46"
 dependencies = [
  "anyhow",
  "cargo",
