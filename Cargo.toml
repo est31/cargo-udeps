@@ -17,7 +17,7 @@ vendored-openssl = ["cargo/vendored-openssl"]
 vendored-libgit2 = ["cargo/vendored-libgit2"]
 
 [dependencies]
-nu-ansi-term = "0.49.0"
+nu-ansi-term = "0.50.0"
 cargo = "0.77"
 cargo-util = "0.2.9"
 serde = { version = "1.0", features = ["derive"] }
