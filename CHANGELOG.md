@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.47 - March 10, 2024
+
+- Updated lockfile release
+
 ## Release 0.1.46 - February 10, 2024
 
 - Update `cargo` dependency to 0.77
