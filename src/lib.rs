@@ -252,7 +252,7 @@ impl OptUdeps {
 		if self.verbose > 0 {
 			let mut shell = config.shell();
 			shell.warn(
-				"currently verbose command informations (\"Running `..`\") are not correct.",
+				"currently verbose command information (\"Running `..`\") are not correct.",
 			)?;
 			shell.warn("for example, `cargo-udeps` does these modifications:")?;
 			shell.warn("- changes `$CARGO` to the value given from `cargo`")?;
@@ -506,7 +506,7 @@ impl OptUdeps {
 			(&build_dependencies, &used_build_dependencies, dependency::DepKind::Build),
 		] {
 			for &(id, dependency) in *dependencies {
-				// This package may have been explictly excluded via flags.
+				// This package may have been explicitly excluded via flags.
 				if !included_packages.contains(&id) {
 					continue;
 				}
