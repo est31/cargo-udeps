@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub struct CrateDisambiguator(pub u64, pub u64);
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct CrateId {
 	pub name :String,
 	pub disambiguator :CrateDisambiguator,
@@ -33,6 +34,7 @@ pub struct ExternalCrate {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct Prelude {
 	pub crate_id :CrateId,
 	pub external_crates :Vec<ExternalCrate>,
@@ -62,6 +64,7 @@ impl<Id :Eq> PartialOrd for Def<Id> {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct Ref<KrateId> {
 	pub kind :String,
 	pub ref_id :ItemId<KrateId>,
@@ -69,11 +72,13 @@ pub struct Ref<KrateId> {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct Compilation {
 	pub directory :String,
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct CrateSaveAnalysis {
 	pub compilation :Compilation,
 	pub prelude :Prelude,
@@ -82,6 +87,7 @@ pub struct CrateSaveAnalysis {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct CrateSaveAnalysisMetadata {
 	pub compilation :Compilation,
 	pub prelude :Prelude,
