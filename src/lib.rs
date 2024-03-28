@@ -1,5 +1,3 @@
-mod defs;
-
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
@@ -26,8 +24,6 @@ use cargo_util::ProcessBuilder;
 use cargo::{CargoResult, CliError, CliResult, Config};
 use serde::{Deserialize, Serialize};
 use clap::{ArgAction, ArgMatches, CommandFactory, Parser};
-
-use crate::defs::CrateSaveAnalysis;
 
 pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Config, stdout: W) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
@@ -232,14 +228,6 @@ struct OptUdeps {
 		value_parser = clap::value_parser!(bool),
 	)]
 	keep_going :bool,
-	#[arg(
-		long,
-		id = "show-unused-transitive",
-		help("Show unused dependencies that get used transitively by main dependencies. \
-			  Works only with 'save-analysis' backend"),
-		value_parser = clap::value_parser!(bool),
-	)]
-	show_unused_transitive :bool,
 }
 
 impl OptUdeps {
@@ -256,8 +244,6 @@ impl OptUdeps {
 			)?;
 			shell.warn("for example, `cargo-udeps` does these modifications:")?;
 			shell.warn("- changes `$CARGO` to the value given from `cargo`")?;
-			shell.warn("- sets `$RUST_CONFIG_SAVE_ANASYSIS` (for crates on the local filesystem)")?;
-			shell.warn("- adds `-Z save-analysis` (〃)")?;
 		}
 
 		config.configure(
@@ -319,7 +305,7 @@ impl OptUdeps {
 			.collect::<CargoResult<HashMap<_, _>>>()?;
 
 		let data = Arc::new(Mutex::new(ExecData::new(&ws)?));
-		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone(), backend : self.backend });
+		let exec :Arc<dyn Executor + 'static> = Arc::new(Exec { data : data.clone() });
 		cargo::ops::compile_with_exec(&ws, &compile_opts, &exec)?;
 		let data = data.lock().unwrap();
 
@@ -345,31 +331,10 @@ impl OptUdeps {
 			lib_stem_to_pkg_id.insert(lib_stem, cmd_info.pkg);
 		}
 		enum BackendData {
-			SaveAnalysis {
-				analysis :CrateSaveAnalysis,
-				ref_krate_ids :Option<HashSet<u32>>
-			},
 			Depinfo(DepInfo),
 		}
 		for cmd_info in data.relevant_cmd_infos.iter() {
 			let backend_data = match self.backend {
-				Backend::SaveAnalysis => {
-					let analysis = cmd_info.get_save_analysis(&mut config.shell())?;
-					let ref_krate_ids = match self.show_unused_transitive {
-						true => Some(
-							analysis
-								.refs
-								.iter()
-								.map(|ref_| ref_.ref_id.krate)
-								.collect(),
-						),
-						false => None,
-					};
-					BackendData::SaveAnalysis {
-						analysis,
-						ref_krate_ids
-					}
-				},
 				Backend::Depinfo => {
 					let depinfo = cmd_info.get_depinfo(&mut config.shell())?;
 					BackendData::Depinfo(depinfo)
@@ -383,24 +348,6 @@ impl OptUdeps {
 					dependencies: &mut HashSet<(PackageId, InternedString)>,
 				| {
 					match &backend_data {
-						BackendData::SaveAnalysis {
-							analysis,
-							ref_krate_ids,
-						} => {
-							for ext in &analysis.prelude.external_crates {
-								let id_used_in_refs = ref_krate_ids
-									.as_ref()
-									.map_or(true, |ids| ids.contains(&ext.num));
-								if !id_used_in_refs {
-									continue;
-								}
-								if let Some(dependency_names) = dnv.by_lib_true_snakecased_name.get(&*ext.id.name) {
-									for dependency_name in dependency_names {
-										used_dependencies.insert((cmd_info.pkg, *dependency_name));
-									}
-								}
-							}
-						},
 						BackendData::Depinfo(depinfo) => for dep in depinfo.deps_of_depfile()  {
 							let fs = if let Some(fs) = dep.file_stem() {
 								fs
@@ -625,7 +572,6 @@ impl ExecData {
 
 struct Exec {
 	data :Arc<Mutex<ExecData>>,
-	backend :Backend,
 }
 
 impl Executor for Exec {
@@ -678,9 +624,6 @@ impl Executor for Exec {
 			// This reduces the save analysis files that are being created a little
 			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
 				r#"{ "reachable_only": false, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
-			if let Backend::SaveAnalysis = self.backend {
-				cmd.arg("-Z").arg("save-analysis");
-			}
 		}
 		DefaultExecutor.exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
@@ -705,19 +648,6 @@ struct CmdInfo {
 }
 
 impl CmdInfo {
-	fn get_save_analysis_path(&self) -> PathBuf {
-		let filename = self.get_artifact_base_name() + ".json";
-		Path::new(&self.out_dir)
-			.join("save-analysis")
-			.join(filename)
-	}
-	fn get_save_analysis(&self, shell :&mut Shell) -> CargoResult<CrateSaveAnalysis> {
-		let p = self.get_save_analysis_path();
-		shell.info(format_args!("Loading save analysis from {:?}", p))?;
-		let f = std::fs::read_to_string(p)?;
-		let res = serde_json::from_str(&f)?;
-		Ok(res)
-	}
 	fn get_artifact_base_name(&self) -> String {
 		let maybe_lib = if self.crate_type.ends_with("lib") ||
 				self.crate_type == "proc-macro" {
@@ -1160,7 +1090,6 @@ impl FromStr for OutputKind {
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum Backend {
-	SaveAnalysis,
 	Depinfo,
 }
 
@@ -1169,9 +1098,8 @@ impl FromStr for Backend {
 
 	fn from_str(s: &str) -> std::result::Result<Self, &'static str> {
 		match s {
-			"save-analysis" | "save_analysis" => Ok(Self::SaveAnalysis),
 			"depinfo" => Ok(Self::Depinfo),
-			_ => Err(r#"expected "save-analysis" or "depinfo" (you should not see this message)"#),
+			_ => Err(r#"expected "depinfo" (you should not see this message)"#),
 		}
 	}
 }
