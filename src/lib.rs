@@ -19,13 +19,14 @@ use cargo::core::shell::Shell;
 use cargo::core::{dependency, Package, Resolve, Workspace, Verbosity};
 use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
+use cargo::util::context::GlobalContext;
 use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
-use cargo::{CargoResult, CliError, CliResult, util::context::GlobalContext as Config};
+use cargo::{CargoResult, CliError, CliResult};
 use serde::{Deserialize, Serialize};
 use clap::{ArgAction, ArgMatches, CommandFactory, Parser};
 
-pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut Config, stdout: W) -> CliResult {
+pub fn run<I: IntoIterator<Item = OsString>, W: Write>(args :I, config :&mut GlobalContext, stdout: W) -> CliResult {
 	let args = args.into_iter().collect::<Vec<_>>();
 	let Opt::Udeps(opt) = Opt::try_parse_from(&args)?;
 	let clap_matches = Opt::command().try_get_matches_from(args)?;
@@ -233,7 +234,7 @@ struct OptUdeps {
 impl OptUdeps {
 	fn run<W: Write>(
 		&self,
-		config :&mut Config,
+		config :&mut GlobalContext,
 		stdout :W,
 		clap_matches :&ArgMatches
 	) -> CargoResult<i32> {
