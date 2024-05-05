@@ -21,7 +21,7 @@ use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
 use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
-use cargo::{CargoResult, CliError, CliResult, Config};
+use cargo::{CargoResult, CliError, CliResult, util::context::GlobalContext as Config};
 use serde::{Deserialize, Serialize};
 use clap::{ArgAction, ArgMatches, CommandFactory, Parser};
 
@@ -286,7 +286,6 @@ impl OptUdeps {
 			&Packages::All.to_package_id_specs(&ws)?,
 			HasDevUnits::Yes,
 			ForceAllTargets::No,
-			None,
 		)?;
 
 		let packages = ws_resolve.pkg_set
@@ -550,19 +549,19 @@ impl ExecData {
 			.map(Ok::<_, anyhow::Error>)
 			.unwrap_or_else(|| {
 				// Unless otherwise specified, `$CARGO` is set to `config.cargo_exe()` for compilation commands which points at `cargo-udeps`.
-				let cargo_exe = ws.config().cargo_exe()?;
-				ws.config().shell().warn(format!(
+				let cargo_exe = ws.gctx().cargo_exe()?;
+				ws.gctx().shell().warn(format!(
 					"Couldn't find $CARGO environment variable. Setting it to {}",
 					cargo_exe.display(),
 				))?;
-				ws.config().shell().warn(
+				ws.gctx().shell().warn(
 					"`cargo-udeps` currently does not support basic Cargo commands such as `build`",
 				)?;
 				Ok(cargo_exe.into())
 			})?;
 		Ok(Self {
 			cargo_exe,
-			supports_color :ws.config().shell().err_supports_color(),
+			supports_color :ws.gctx().shell().err_supports_color(),
 			workspace_members :ws.members().map(Package::package_id).collect(),
 			relevant_cmd_infos : Vec::new(),
 			all_cmd_infos : Vec::new(),
