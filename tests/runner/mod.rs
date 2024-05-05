@@ -42,7 +42,7 @@ impl Runner {
 			set_rustc_env()?;
 		}
 		let cwd = tempfile::Builder::new().prefix(prefix).tempdir()?;
-		let cargo_home = cargo::util::config::homedir(cwd.as_ref())
+		let cargo_home = cargo::util::homedir(cwd.as_ref())
 			.with_context(|| "couldn't find the \"Cargo home\"")?;
 		let args = vec!["".into(), "udeps".into()];
 		Ok(Self {
@@ -81,7 +81,8 @@ impl Runner {
 			eprintln!("Please set the UDEPS_VERBOSE_TEST environment variable to enable more verbose logging");
 			Shell::from_write(Box::new(vec![]))
 		};
-		let mut config = cargo::Config::new(stderr, self.cwd.path().to_owned(), self.cargo_home.clone());
+		let mut config = cargo::util::context::GlobalContext::new(stderr,
+			self.cwd.path().to_owned(), self.cargo_home.clone());
 		let code = match cargo_udeps::run(self.args.clone(), &mut config, &mut stdout) {
 			Ok(()) => 0,
 			Err(CliError {
