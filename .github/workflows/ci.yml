@@ -25,19 +25,19 @@ jobs:
           - nightly-x86_64-unknown-linux-gnu
         include:
           - toolchain: stable-x86_64-pc-windows-msvc
-            toolchain_nightly: nightly-2023-04-01-x86_64-pc-windows-msvc
+            toolchain_nightly: nightly-2024-06-01-x86_64-pc-windows-msvc
             os: windows-latest
           - toolchain: stable-x86_64-apple-darwin
-            toolchain_nightly: nightly-2023-04-01-x86_64-apple-darwin
+            toolchain_nightly: nightly-2024-06-01-x86_64-apple-darwin
             os: macos-latest
           - toolchain: stable-x86_64-unknown-linux-gnu
-            toolchain_nightly: nightly-2023-04-01-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2024-06-01-x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - toolchain: beta-x86_64-unknown-linux-gnu
-            toolchain_nightly: nightly-2023-04-01-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2024-06-01-x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - toolchain: nightly-x86_64-unknown-linux-gnu
-            toolchain_nightly: nightly-2023-04-01-x86_64-unknown-linux-gnu
+            toolchain_nightly: nightly-2024-06-01-x86_64-unknown-linux-gnu
             os: ubuntu-latest
 
     name: ${{ matrix.toolchain }}
