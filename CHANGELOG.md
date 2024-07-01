@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.49 - July 1, 2024
+
+- Update `cargo` dependency to 0.80
+
 ## Release 0.1.48 - May 5, 2024
 
 - Update `cargo` dependency to 0.78
