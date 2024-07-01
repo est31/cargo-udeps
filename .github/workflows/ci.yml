@@ -30,6 +30,7 @@ jobs:
           - toolchain: stable-x86_64-apple-darwin
             toolchain_nightly: nightly-2024-06-01-x86_64-apple-darwin
             os: macos-latest
+            args: "--features vendored-openssl,vendored-libgit2"
           - toolchain: stable-x86_64-unknown-linux-gnu
             toolchain_nightly: nightly-2024-06-01-x86_64-unknown-linux-gnu
             os: ubuntu-latest
@@ -58,7 +59,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: '`cargo test`'
-        run: cargo test --no-fail-fast --verbose --locked
+        run: cargo test --no-fail-fast --verbose --locked ${{ matrix.args }}
         env:
           CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain_nightly }}
 
