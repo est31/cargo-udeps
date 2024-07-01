@@ -19,7 +19,7 @@ jobs:
       matrix:
         toolchain:
           - stable-x86_64-pc-windows-msvc
-          - stable-x86_64-apple-darwin
+          - stable-aarch64-apple-darwin
           - stable-x86_64-unknown-linux-gnu
           - beta-x86_64-unknown-linux-gnu
           - nightly-x86_64-unknown-linux-gnu
@@ -27,8 +27,8 @@ jobs:
           - toolchain: stable-x86_64-pc-windows-msvc
             toolchain_nightly: nightly-2024-06-01-x86_64-pc-windows-msvc
             os: windows-latest
-          - toolchain: stable-x86_64-apple-darwin
-            toolchain_nightly: nightly-2024-06-01-x86_64-apple-darwin
+          - toolchain: stable-aarch64-apple-darwin
+            toolchain_nightly: nightly-2024-06-01-aarch64-apple-darwin
             os: macos-latest
             args: "--features vendored-openssl,vendored-libgit2"
           - toolchain: stable-x86_64-unknown-linux-gnu
