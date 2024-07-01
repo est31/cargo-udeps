@@ -86,6 +86,7 @@ jobs:
             os: windows-latest
           - target: x86_64-apple-darwin
             os: macos-latest
+            args: "--features vendored-openssl,vendored-libgit2"
           - target: aarch64-apple-darwin
             os: macos-latest
             args: "--features vendored-openssl,vendored-libgit2"
