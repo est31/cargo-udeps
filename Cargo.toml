@@ -1,39 +1,18 @@
 [package]
-name = "cargo-udeps"
-version = "0.1.50"
-authors = ["est31 <MTest31@outlook.com>", "Ryo Yamashita <qryxip@gmail.com>"]
-description = "Find unused dependencies in Cargo.toml"
-repository = "https://github.com/est31/cargo-udeps"
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-keywords = ["cargo"]
-categories = ["development-tools", "development-tools::cargo-plugins"]
+name = "solana__bot"
+version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[features]
-vendored-openssl = ["cargo/vendored-openssl"]
-vendored-libgit2 = ["cargo/vendored-libgit2"]
-
 [dependencies]
-nu-ansi-term = "0.50.0"
-cargo = "0.81.0"
-cargo-util = "0.2.11"
+solana-client = "1.14.7"
+solana-sdk = "1.14.7"
+anchor-lang = "0.26.0"
+tokio = { version = "1.25", features = ["full"] }
+futures = "0.3"
+dashmap = "5.4.0"
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-clap = { version = "4.0", features = ["derive"] }
-anyhow = "1.0"
-
-[dev-dependencies]
-pretty_assertions = "1.0"
-tempfile = "3.1"
-
-[profile.dev]
-debug = false
-
-[profile.release]
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = "symbols"
