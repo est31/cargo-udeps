@@ -279,6 +279,7 @@ impl OptUdeps {
 			self.all_features,
 			!self.no_default_features,
 		)?;
+		let dry_run = false;
 		let ws_resolve = cargo::ops::resolve_ws_with_opts(
 			&ws,
 			&mut target_data,
@@ -287,6 +288,7 @@ impl OptUdeps {
 			&Packages::All.to_package_id_specs(&ws)?,
 			HasDevUnits::Yes,
 			ForceAllTargets::No,
+			dry_run,
 		)?;
 
 		let packages = ws_resolve.pkg_set
