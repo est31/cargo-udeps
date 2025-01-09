@@ -1,5 +1,9 @@
 # Changelog
 
+## Release 0.1.54 - January 9, 2025
+
+- Update `cargo` dependency to 0.85
+
 ## Release 0.1.53 - November 30, 2024
 
 - Update `cargo` dependency to 0.84
