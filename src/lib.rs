@@ -590,11 +590,6 @@ impl Executor for Exec {
 		let is_path = id.source_id().is_path();
 		let is_workspace_member;
 
-		// Temporary fix until https://github.com/rust-lang/cargo/pull/14963 arrives
-		// https://github.com/est31/cargo-udeps/issues/293
-		cmd.arg("--check-cfg");
-		cmd.arg("cfg(test)");
-
 		{
 			// TODO unwrap used
 			let mut bt = self.data.lock().unwrap();
