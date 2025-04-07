@@ -285,7 +285,7 @@ impl OptUdeps {
 			&mut target_data,
 			requested_kinds,
 			&cli_features,
-			&Packages::All.to_package_id_specs(&ws)?,
+			&Packages::All(Vec::new()).to_package_id_specs(&ws)?,
 			HasDevUnits::Yes,
 			ForceAllTargets::No,
 			dry_run,
