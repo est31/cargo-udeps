@@ -211,16 +211,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f61dac84819c6588b558454b194026eb1f09c293b9036ae9b159e74e73ab6cf9"
 
 [[package]]
-name = "bytesize"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d2c12f985c78475a6b8d629afd0c360260ef34cfef52efccdcfd31972f81c2e"
-
-[[package]]
 name = "cargo"
-version = "0.87.0"
+version = "0.88.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9ec675923420ee62d9ab7aca09ef5c45b0c901df4a84963e979f9cc668a4f2"
+checksum = "e3266d7f10870d970f22fd244b5d4bb017f723247e6743f2283f6fe63a4f6084"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -228,7 +222,6 @@ dependencies = [
  "anyhow",
  "base64",
  "blake3",
- "bytesize",
  "cargo-credential",
  "cargo-credential-libsecret",
  "cargo-credential-macos-keychain",
@@ -252,11 +245,11 @@ dependencies = [
  "hmac",
  "home",
  "http-auth",
- "humantime",
  "ignore",
  "im-rc",
  "indexmap",
  "itertools",
+ "jiff 0.2.14",
  "jobserver",
  "lazycell",
  "libc",
@@ -316,9 +309,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-libsecret"
-version = "0.4.12"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8d8dbc26ce815b430803e756f6ad5f70a67d47bfcde9ca6f4276732c39551b8"
+checksum = "02d4e8e593dd3967cf90d6ae8e0e820abbb9ba168c4015dc04d90abc80477b8b"
 dependencies = [
  "anyhow",
  "cargo-credential",
@@ -327,9 +320,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-macos-keychain"
-version = "0.4.12"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b489cbdae63be32c040b5fe81b0f7725e563bcd805bb828e746971a4967aaf28"
+checksum = "4037e5af4bd682580c82143a0a22d9fd2ae6e57ee8b9ea7110dabcf1160828cc"
 dependencies = [
  "cargo-credential",
  "security-framework",
@@ -337,9 +330,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-wincred"
-version = "0.4.12"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49c6cb2255a5267a4d18077bc436db5a2c261d97a3dcbc84ccd9747b473b2f4b"
+checksum = "320491fd2d43703fe8685cc844af75eba650d32f51a26a9f37ec8fd0d426a738"
 dependencies = [
  "cargo-credential",
  "windows-sys 0.59.0",
@@ -371,9 +364,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527f6e2a4e80492e90628052be879a5996c2453ad5ec745bfa310a80b7eca20a"
+checksum = "d767bc85f367f6483a6072430b56f5c0d6ee7636751a21a800526d0711753d76"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -394,9 +387,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-util-schemas"
-version = "0.7.3"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d2af4d048b76b1144c58ad66a27b05973a574cefe4999cfd2ebf5cd50213bfd"
+checksum = "ea8b01266e95c3cf839fe626e651fa36a9171033caa917a773d7a0ba1d5ce6be"
 dependencies = [
  "semver",
  "serde",
@@ -550,9 +543,9 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.40.9"
+version = "0.40.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6967b9fa81bc485cf87748fdc2f8c79b922f5c59fe4f7c160329cee7fae4a314"
+checksum = "9c15b946f2bbd53f5be858ed02fcacfeb3646f3ca67b24defc276a01edd10de6"
 dependencies = [
  "curl",
  "percent-encoding",
@@ -1171,7 +1164,7 @@ checksum = "c57c477b645ee248b173bb1176b52dd528872f12c50375801a58aaf5ae91113f"
 dependencies = [
  "bstr",
  "itoa",
- "jiff",
+ "jiff 0.1.29",
  "thiserror 2.0.11",
 ]
 
@@ -1862,12 +1855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
-
-[[package]]
 name = "icu_collections"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2088,6 +2075,30 @@ dependencies = [
  "portable-atomic-util",
  "serde",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "jiff"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a194df1107f33c79f4f93d02c80798520551949d59dfad22b6157048a88cca93"
+dependencies = [
+ "jiff-static",
+ "log",
+ "portable-atomic",
+ "portable-atomic-util",
+ "serde",
+]
+
+[[package]]
+name = "jiff-static"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c6e1db7ed32c6c71b759497fae34bf7933636f75a251b9e736555da426f6442"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2800,9 +2811,9 @@ checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustc-stable-hash"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2febf9acc5ee5e99d1ad0afcdbccc02d87aa3f857a1f01f825b80eacf8edfcd1"
+checksum = "781442f29170c5c93b7185ad559492601acdc71d5bb0706f5868094f45cfcd08"
 
 [[package]]
 name = "rustfix"
