@@ -2512,9 +2512,9 @@ dependencies = [
 
 [[package]]
 name = "pasetors"
-version = "0.7.4"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb798c661c80718af935bea17997928937822e7369cd087667ff4179f9146551"
+checksum = "8c1c6d47c07a08cb59ddad44d53cb5729855e35f7d993184cec3aa37ccdb7008"
 dependencies = [
  "ct-codecs",
  "ed25519-compact",
@@ -2524,6 +2524,7 @@ dependencies = [
  "rand_core 0.6.4",
  "regex",
  "serde",
+ "serde_derive",
  "serde_json",
  "sha2",
  "subtle",
