@@ -28,16 +28,16 @@ static BUILD_RS: &str = "fn main() {}\n";
 
 #[test]
 fn without_all_targets() -> CargoResult<()> {
-	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_normal_dev_build_without_all_targets")?
-			.cargo_toml(CARGO_TOML)?
-			.dir("./src")?
-			.file("./src/lib.rs", LIB_RS)?
-			.file("./build.rs", BUILD_RS)?
-			.run()?;
-	assert_eq!(1, code);
-	assert_eq!(
-		r#"unused dependencies:
+    let (code, stdout_masked) =
+        Runner::new("cargo_udeps_test_normal_dev_build_without_all_targets")?
+            .cargo_toml(CARGO_TOML)?
+            .dir("./src")?
+            .file("./src/lib.rs", LIB_RS)?
+            .file("./build.rs", BUILD_RS)?
+            .run()?;
+    assert_eq!(1, code);
+    assert_eq!(
+        r#"unused dependencies:
 `normal_dev_build v0.0.1 (██████████)`
 ├─── dependencies
 │    └─── "if_chain"
@@ -49,25 +49,23 @@ Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
       To ignore some dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
-		stdout_masked,
-	);
-	Ok(())
+        stdout_masked,
+    );
+    Ok(())
 }
-
 
 #[test]
 fn with_all_targets() -> CargoResult<()> {
-	let (code, stdout_masked) =
-		Runner::new("cargo_udeps_test_normal_dev_build_with_all_targets")?
-			.cargo_toml(CARGO_TOML)?
-			.dir("./src")?
-			.file("./src/lib.rs", LIB_RS)?
-			.file("./build.rs", BUILD_RS)?
-			.arg("--all-targets")
-			.run()?;
-	assert_eq!(1, code);
-	assert_eq!(
-		r#"unused dependencies:
+    let (code, stdout_masked) = Runner::new("cargo_udeps_test_normal_dev_build_with_all_targets")?
+        .cargo_toml(CARGO_TOML)?
+        .dir("./src")?
+        .file("./src/lib.rs", LIB_RS)?
+        .file("./build.rs", BUILD_RS)?
+        .arg("--all-targets")
+        .run()?;
+    assert_eq!(1, code);
+    assert_eq!(
+        r#"unused dependencies:
 `normal_dev_build v0.0.1 (██████████)`
 ├─── dependencies
 │    └─── "if_chain"
@@ -79,7 +77,7 @@ Note: They might be false-positive.
       For example, `cargo-udeps` cannot detect usage of crates that are only used in doc-tests.
       To ignore some dependencies, write `package.metadata.cargo-udeps.ignore` in Cargo.toml.
 "#,
-		stdout_masked,
-	);
-	Ok(())
+        stdout_masked,
+    );
+    Ok(())
 }
