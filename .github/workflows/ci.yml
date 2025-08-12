@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: rust-toolchain ( ${{ matrix.toolchain_nightly }} )
         uses: dtolnay/rust-toolchain@master
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: rust-toolchain
         uses: dtolnay/rust-toolchain@master
