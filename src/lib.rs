@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use std::{env, fmt};
 
 use nu_ansi_term::Color;
-use cargo::core::compiler::{DefaultExecutor, Executor, RustcTargetData, Unit};
+use cargo::core::compiler::{CompileMode, UserIntent, DefaultExecutor, Executor, RustcTargetData, Unit};
 use cargo::core::resolver::HasDevUnits;
 use cargo::core::resolver::features::{ForceAllTargets, CliFeatures};
 use cargo::core::manifest::Target;
@@ -18,7 +18,7 @@ use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
 use cargo::core::{dependency, Package, Resolve, Workspace, Verbosity};
 use cargo::ops::Packages;
-use cargo::util::command_prelude::{ArgMatchesExt, CompileMode, ProfileChecking};
+use cargo::util::command_prelude::{ArgMatchesExt, ProfileChecking};
 use cargo::util::context::GlobalContext;
 use cargo::util::interning::InternedString;
 use cargo_util::ProcessBuilder;
@@ -268,7 +268,7 @@ impl OptUdeps {
 				profile,
 			)),
 		};
-		let mode = CompileMode::Check { test };
+		let mode = UserIntent::Check { test };
 		let pc = ProfileChecking::LegacyTestOnly;
 		let compile_opts = clap_matches.compile_options(config, mode, Some(&ws), pc)?;
 		let requested_kinds = &compile_opts.build_config.requested_kinds;
