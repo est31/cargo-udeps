@@ -623,11 +623,6 @@ impl Executor for Exec {
 			}
 			cmd.env(cargo::CARGO_ENV, &bt.cargo_exe);
 		}
-		if is_workspace_member {
-			// This reduces the save analysis files that are being created a little
-			std::env::set_var("RUST_SAVE_ANALYSIS_CONFIG",
-				r#"{ "reachable_only": false, "full_docs": false, "pub_only": false, "distro_crate": false, "signatures": false, "borrow_data": false }"#);
-		}
 		DefaultExecutor.exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)?;
 		Ok(())
 	}
