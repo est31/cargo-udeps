@@ -25,8 +25,10 @@ fn set_rustc_env() -> CargoResult<()> {
 		return Err(anyhow::anyhow!("{}", status))
 			.with_context(|| format!("could not get the {} rustc", toolchain));
 	}
-	env::set_var("RUSTC", str::from_utf8(&stdout)?.trim());
-	env::set_var(SET_RUSTC_ENV, "1");
+	unsafe {
+		env::set_var("RUSTC", str::from_utf8(&stdout)?.trim());
+		env::set_var(SET_RUSTC_ENV, "1");
+	}
 	Ok(())
 }
 
