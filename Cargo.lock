@@ -25,11 +25,12 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "annotate-snippets"
-version = "0.11.5"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "710e8eae58854cdc1790fcb56cca04d712a17be849eeb81da2a724bf4bae2bc4"
+checksum = "96401ca08501972288ecbcde33902fce858bf73fbcbdf91dab8c3a9544e106bb"
 dependencies = [
  "anstyle",
+ "memchr",
  "unicode-width",
 ]
 
@@ -199,9 +200,9 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "cargo"
-version = "0.91.0"
+version = "0.92.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f46c7f53180bf46c220e2af1ceff951e2ce088184fa9009ad6915efee25915d"
+checksum = "89389877f508bae1d45a48b4e76cb0dac5e41a6ac5103752e44d29be0c69c394"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -278,6 +279,7 @@ dependencies = [
  "url",
  "walkdir",
  "windows-sys 0.60.2",
+ "winnow",
 ]
 
 [[package]]
@@ -297,9 +299,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-libsecret"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bad275302dfd55e54dcd555c7129cd76a4b4d7236c6a779370683014cba0a90"
+checksum = "90161b8b1b98a28f0fbdfccafb6adcf2b0be948a4fad3acc31461abf5447debe"
 dependencies = [
  "anyhow",
  "cargo-credential",
@@ -308,9 +310,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-macos-keychain"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9f95d842bd047476c65e1d4a5f681f1d158f8c784edfc4ae245a2430ca09f02"
+checksum = "e95b9c2431165b30ea111f2933ed6799bfa9a66c9503046064cf8f001960ea1b"
 dependencies = [
  "cargo-credential",
  "security-framework",
@@ -318,9 +320,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-wincred"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c238839b7d5e5b62836277b4c83c9ed17d9ca7334b298c814c223b2e691ff76"
+checksum = "c35397b066a83f2e036fb23fca2fb400bfa65e8e8453c21e0b1690cf8250e414"
 dependencies = [
  "cargo-credential",
  "windows-sys 0.60.2",
@@ -352,9 +354,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.2.23"
+version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fbac95faac578313b0ba60f9a5594a97cae42692f23b133ecd17615dedca50e"
+checksum = "f97c9ef0f8af69bfcecfe4c17a414d7bb978fe794bc1a38952e27b5c5d87492d"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -375,9 +377,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-util-schemas"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b45c9672203db3caf908423f25bc31f3b6a814a9d22f2380048236498a312e75"
+checksum = "549c00f5bb23fdaf26135d747d7530563402a101f1887a5a1916afe2c09cf229"
 dependencies = [
  "semver",
  "serde",
@@ -532,9 +534,9 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.40.13"
+version = "0.40.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1986712716d18d860258fdbd03fd9d9e20f1ffb974d8a203816c58b68c6b9012"
+checksum = "574ce0b8170c097cf174097b84bff181956ad2ab2bbe092ab58d1c08d9f1f417"
 dependencies = [
  "curl",
  "percent-encoding",
@@ -2242,9 +2244,9 @@ dependencies = [
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.34.0"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91632f3b4fb6bd1d72aa3d78f41ffecfcf2b1a6648d8c241dbe7dbfaf4875e15"
+checksum = "133c182a6a2c87864fe97778797e46c7e999672690dc9fa3ee8e241aa4a9c13f"
 dependencies = [
  "cc",
  "pkg-config",
@@ -2834,9 +2836,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.36.0"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3de23c3319433716cf134eed225fe9986bc24f63bed9be9f20c329029e672dc7"
+checksum = "165ca6e57b20e1351573e3729b958bc62f0e48025386970b6e4d29e7a7e71f3f"
 dependencies = [
  "bitflags",
  "fallible-iterator",
