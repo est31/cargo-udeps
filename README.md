@@ -102,6 +102,7 @@ You are welcome to expand it:
 * https://github.com/rust-bitcoin/rust-bitcoincore-rpc/pull/169
 * https://github.com/hendrikmaus/helm-templexer/pull/85
 * https://github.com/itchysats/itchysats/commit/99076ecb907b3bfc5f31ffcdad9716df1869c8f7
+* https://github.com/isographlabs/isograph/commit/9da885db555c945d0cc3667e2a2aa94573cd8fc7
 
 ### Contributing
 
