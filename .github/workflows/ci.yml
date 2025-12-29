@@ -61,7 +61,7 @@ jobs:
       - name: '`cargo test`'
         run: cargo test --no-fail-fast --verbose --locked ${{ matrix.args }}
         env:
-          CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain_nightly }}
+          CARGO_UDEPS_TEST_TOOLCHAIN: ${{ matrix.toolchain }}
 
       # `locked`, `dev-deps`
       - name: '`cargo build`'
