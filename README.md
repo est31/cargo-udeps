@@ -6,7 +6,9 @@
 
 Find unused dependencies in Cargo.toml.
 
-One can compile and run cargo-udeps on the stable compiler. As it includes `cargo` as a dependency, it will likely compile with the latest rustc release, as well as the one before it.
+While compilation of this tool also works on Rust stable,
+it needs Rust nightly to actually run.
+As it includes `cargo` as a dependency, it will likely compile with the latest rustc release, as well as the one before it.
 
 ### Installation
 
