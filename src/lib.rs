@@ -17,7 +17,6 @@ use cargo::core::manifest::Target;
 use cargo::core::package_id::PackageId;
 use cargo::core::shell::Shell;
 use cargo::core::{dependency, Package, Resolve, Workspace, Verbosity};
-use cargo::ops::Packages;
 use cargo::util::command_prelude::{ArgMatchesExt, ProfileChecking};
 use cargo::util::context::GlobalContext;
 use cargo::util::interning::InternedString;
@@ -281,7 +280,7 @@ impl OptUdeps {
 			&mut target_data,
 			requested_kinds,
 			&cli_features,
-			&Packages::All(Vec::new()).to_package_id_specs(&ws)?,
+			&compile_opts.spec.to_package_id_specs(&ws)?,
 			HasDevUnits::Yes,
 			ForceAllTargets::No,
 			dry_run,
@@ -293,9 +292,10 @@ impl OptUdeps {
 			.map(|p| (p.package_id(), p))
 			.collect::<HashMap<_, _>>();
 
-		let dependency_names = ws
-			.members()
-			.map(|from| {
+		let included_packages_vec = compile_opts.spec.get_packages(&ws)?;
+		let dependency_names = included_packages_vec
+			.iter()
+			.map(|&from| {
 				let val = DependencyNames::new(from, &packages, &ws_resolve.targeted_resolve, &mut config.shell())?;
 				let key = from.package_id();
 				Ok((key, val))
