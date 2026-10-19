@@ -1,6 +1,6 @@
 use std::{env, io};
 
-use cargo::core::shell::Shell;
+use cargo_util_terminal::Shell;
 
 fn main() {
 	let mut config = cargo::util::context::GlobalContext::default()
