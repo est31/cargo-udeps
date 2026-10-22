@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 use std::{env, fs, io, str};
 
 use anyhow::Context;
-use cargo::core::shell::Shell;
+use cargo_util_terminal::Shell;
 use cargo::{CargoResult, CliError};
 use tempfile::TempDir;
 
