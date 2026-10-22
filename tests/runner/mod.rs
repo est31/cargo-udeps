@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
 use std::ffi::OsString;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
+use std::sync::{Arc, Mutex};
 use std::{env, fs, io, str};
 
 use anyhow::Context;
@@ -76,12 +78,21 @@ impl Runner {
 	}
 
 	pub(crate) fn run(self) -> CargoResult<(i32, String)> {
+		let (code, stdout, _) = self.run_with_stderr()?;
+		Ok((code, stdout))
+	}
+
+	/// Like `run`, but also returns what was written to stderr.
+	///
+	/// The returned stderr is empty if `UDEPS_VERBOSE_TEST` is set, as it goes to the terminal then.
+	pub(crate) fn run_with_stderr(self) -> CargoResult<(i32, String, String)> {
 		let mut stdout = vec![];
+		let stderr_buf = SharedBuf::default();
 		let stderr = if std::env::var("UDEPS_VERBOSE_TEST").is_ok() {
 			Shell::new()
 		} else {
 			eprintln!("Please set the UDEPS_VERBOSE_TEST environment variable to enable more verbose logging");
-			Shell::from_write(Box::new(vec![]))
+			Shell::from_write(Box::new(stderr_buf.clone()))
 		};
 		let mut config = cargo::util::context::GlobalContext::new(stderr,
 			self.cwd.path().to_owned(), self.cargo_home.clone());
@@ -96,6 +107,21 @@ impl Runner {
 		};
 		let cwd_lossy = self.cwd.path().to_string_lossy();
 		let stdout = str::from_utf8(&stdout)?.replace(&*cwd_lossy, "██████████");
-		Ok((code, stdout))
+		let stderr = str::from_utf8(&stderr_buf.0.lock().unwrap())?.replace(&*cwd_lossy, "██████████");
+		Ok((code, stdout, stderr))
+	}
+}
+
+/// A writer that can still be read from after it has been handed to a `Shell`.
+#[derive(Clone, Default)]
+struct SharedBuf(Arc<Mutex<Vec<u8>>>);
+
+impl Write for SharedBuf {
+	fn write(&mut self, buf :&[u8]) -> io::Result<usize> {
+		self.0.lock().unwrap().write(buf)
+	}
+
+	fn flush(&mut self) -> io::Result<()> {
+		Ok(())
 	}
 }
