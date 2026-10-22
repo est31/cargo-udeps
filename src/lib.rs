@@ -830,7 +830,11 @@ impl DependencyNames {
 					let names = &mut this[dep.kind()];
 					names.by_extern_crate_name.insert(extern_crate_name, dep.name_in_toml());
 					if let Some(pkg) = names.by_package_id.insert(to_pkg.package_id(), dep.name_in_toml()) {
-						shell.warn(format!("duplicate package mentioned in toml {}. {pkg}", to_pkg.package_id()))?;
+						// A package can be listed several times under the same name,
+						// e.g. once per target. That's not a duplicate.
+						if pkg != dep.name_in_toml() {
+							shell.warn(format!("duplicate package mentioned in toml {}. {pkg}", to_pkg.package_id()))?;
+						}
 					}
 
 					// Two `Dependenc`ies with the same name point at the same `Package`.
